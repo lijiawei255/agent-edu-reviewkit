@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 测试课件与测试输出（不提交）
+测试课件(不提交)/
+测试输出(不提交)/
