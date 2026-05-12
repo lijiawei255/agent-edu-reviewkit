@@ -18,7 +18,7 @@ if sys.platform == 'win32':
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     except Exception:
-        pass
+        print("Warning: Unable to set UTF-8 console output. Unicode characters may display incorrectly.", file=sys.stderr)
 
 # ============================================================
 # 0. 依赖自检
@@ -60,7 +60,8 @@ os.makedirs(图片输出目录, exist_ok=True)
 # ============================================================
 
 def _content_type_to_ext(content_type):
-    """将 MIME content-type 映射为文件扩展名"""
+    """将 MIME content-type 映射为文件扩展名。
+    对于浏览器无法渲染的格式（EMF/WMF），返回 None。"""
     mapping = {
         "image/png":  ".png",
         "image/jpeg": ".jpg",
@@ -69,8 +70,8 @@ def _content_type_to_ext(content_type):
         "image/tiff": ".tiff",
         "image/webp": ".webp",
         "image/x-png": ".png",
-        "image/x-emf": ".emf",
-        "image/x-wmf": ".wmf",
+        "image/x-emf": None,   # EMF 浏览器不兼容，跳过
+        "image/x-wmf": None,   # WMF 浏览器不兼容，跳过
     }
     return mapping.get(content_type, ".png")
 
@@ -178,6 +179,10 @@ def extract_pptx(filepath, basename):
                     img_blob = shape.image.blob
                     if img_blob and len(img_blob) >= 100:
                         ext = _content_type_to_ext(shape.image.content_type)
+                        if ext is None:
+                            # EMF/WMF 等浏览器不兼容格式，跳过
+                            print(f"  ⚠ 跳过不兼容图片格式 ({shape.image.content_type})，幻灯片{slide_num}", file=sys.stderr)
+                            continue
                         img_name = f"{basename}_s{slide_num}_img{img_count+1}{ext}"
                         img_path = os.path.join(图片输出目录, img_name)
                         with open(img_path, "wb") as f:
@@ -267,6 +272,13 @@ HANDLERS = {
     ".dotx": extract_docx,
     ".dotm": extract_docx,
 }
+
+# 验证配置目录是否存在
+if not os.path.isdir(课件目录):
+    print(f"错误：课件目录 '{课件目录}' 不存在。")
+    print("请修改 extract_course_materials.py 第49-53行配置区中的路径。")
+    print(f"  当前设置 课件目录 = {repr(课件目录)}")
+    sys.exit(1)
 
 目标文件 = []
 for fname in sorted(os.listdir(课件目录)):
