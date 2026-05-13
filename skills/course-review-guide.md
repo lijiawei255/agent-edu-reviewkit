@@ -41,323 +41,21 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 
 ## Phase 2：课件内容提取
 
-### 2.1 提供提取脚本
+### 2.1 准备提取脚本
 
-让用户将以下脚本保存为 `extract_course_materials.py` 并放在课件目录下，修改配置区路径后运行。
+将项目根目录中的 `extract_course_materials.py` 复制到你的课件目录下。
 
-```python
-"""
-课程课件内容提取工具 —— 文本 + 图片
-支持格式: .pdf (pypdf), .pptx/.pptm (python-pptx), .docx/.dotx/.dotm (python-docx + zipfile)
-所有依赖均为纯Python库，pip一键安装，无C编译依赖。
+打开 `extract_course_materials.py`，修改第49-53行的配置区路径：
+- `课件目录`：你的课件所在目录
+- `文本输出目录`：提取文本的输出目录（默认为 `extracted_text`）
+- `图片输出目录`：提取图片的输出目录（默认为 `extracted_images`）
 
-使用方法:
-  1. 修改下方"配置区"的 课件目录、文本输出目录、图片输出目录
-  2. 运行: python extract_course_materials.py
-"""
-
-import os
-import sys
-import zipfile
-from pathlib import Path
-
-# 修复Windows控制台编码问题（GBK无法输出Unicode字符如 ✓ ✗）
-if sys.platform == 'win32':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    except Exception:
-        pass
-
-# ============================================================
-# 0. 依赖自检
-# ============================================================
-MISSING = []
-try:
-    from pypdf import PdfReader
-except ImportError:
-    MISSING.append("pypdf")
-try:
-    from pptx import Presentation
-    from pptx.enum.shapes import MSO_SHAPE_TYPE
-except ImportError:
-    MISSING.append("python-pptx")
-try:
-    from docx import Document
-except ImportError:
-    MISSING.append("python-docx")
-
-if MISSING:
-    print("=" * 50)
-    print("以下 Python 库未安装，请先运行：")
-    print(f"  pip install {' '.join(MISSING)}")
-    print("=" * 50)
-    sys.exit(1)
-
-# ============================================================
-# 1. 配置区 —— 用户根据需要修改以下变量
-# ============================================================
-课件目录 = r"课件"
-文本输出目录 = r"extracted_text"
-图片输出目录 = r"extracted_images"
-
-os.makedirs(文本输出目录, exist_ok=True)
-os.makedirs(图片输出目录, exist_ok=True)
-
-# ============================================================
-# 2. 工具函数
-# ============================================================
-
-def _content_type_to_ext(content_type):
-    mapping = {
-        "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
-        "image/bmp": ".bmp", "image/tiff": ".tiff", "image/webp": ".webp",
-        "image/x-png": ".png", "image/x-emf": ".emf", "image/x-wmf": ".wmf",
-    }
-    return mapping.get(content_type, ".png")
-
-def _guess_ext_from_bytes(data):
-    if data[:4] == b'\x89PNG': return '.png'
-    if data[:2] == b'\xff\xd8': return '.jpg'
-    if data[:4] == b'GIF8': return '.gif'
-    if data[:2] == b'BM': return '.bmp'
-    if data[:4] == b'RIFF' and data[8:12] == b'WEBP': return '.webp'
-    return '.png'
-
-def _sanitize_filename(s):
-    illegal = '<>:"/\\|?*'
-    for c in illegal:
-        s = s.replace(c, '_')
-    return s
-
-# ============================================================
-# 3. 纯图片文件预检
-# ============================================================
-
-def _check_likely_image_only(filepath, ext):
-    """预检文件是否可能是纯图片型（扫描版PDF等）"""
-    if ext == '.pdf':
-        try:
-            from pypdf import PdfReader
-            reader = PdfReader(filepath)
-            if len(reader.pages) == 0:
-                return False
-            # 检查前三页的文本量
-            total_chars = 0
-            for page in reader.pages[:3]:
-                text = page.extract_text()
-                if text:
-                    total_chars += len(text.strip())
-            # 前三页均无有效文本 → 大概率是扫描版
-            return total_chars < 50
-        except Exception:
-            return False
-    return False
-
-# ============================================================
-# 4. 格式提取函数
-# ============================================================
-
-def extract_pdf(filepath, basename):
-    reader = PdfReader(filepath)
-    lines = []
-    img_count = 0
-
-    for i, page in enumerate(reader.pages):
-        page_num = i + 1
-        text = page.extract_text()
-        if text and text.strip():
-            lines.append(f"\n--- 第{page_num}页 ---")
-            lines.append(text)
-        try:
-            for j, img_obj in enumerate(page.images):
-                img_data = img_obj.data
-                if not img_data or len(img_data) < 100:
-                    continue
-                ext = _guess_ext_from_bytes(img_data)
-                img_name = f"{basename}_p{page_num}_img{j+1}{ext}"
-                img_path = os.path.join(图片输出目录, img_name)
-                with open(img_path, "wb") as f:
-                    f.write(img_data)
-                lines.append(f"[图片: {img_name}]")
-                img_count += 1
-        except Exception:
-            pass
-
-    return "\n".join(lines), len(reader.pages), img_count
-
-def extract_pptx(filepath, basename):
-    prs = Presentation(filepath)
-    lines = []
-    img_count = 0
-
-    for i, slide in enumerate(prs.slides):
-        slide_num = i + 1
-        slide_texts = []
-        for shape in slide.shapes:
-            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                try:
-                    img_blob = shape.image.blob
-                    if img_blob and len(img_blob) >= 100:
-                        ext = _content_type_to_ext(shape.image.content_type)
-                        img_name = f"{basename}_s{slide_num}_img{img_count+1}{ext}"
-                        img_path = os.path.join(图片输出目录, img_name)
-                        with open(img_path, "wb") as f:
-                            f.write(img_blob)
-                        slide_texts.append(f"[图片: {img_name}]")
-                        img_count += 1
-                except Exception:
-                    pass
-            if shape.has_text_frame:
-                for para in shape.text_frame.paragraphs:
-                    t = para.text.strip()
-                    if t:
-                        slide_texts.append(t)
-            if shape.has_table:
-                table = shape.table
-                for row in table.rows:
-                    row_texts = []
-                    for cell in row.cells:
-                        ct = cell.text.strip().replace("\n", " ")
-                        row_texts.append(ct)
-                    slide_texts.append(" | ".join(row_texts))
-        if slide_texts:
-            lines.append(f"\n--- 第{slide_num}张幻灯片 ---")
-            lines.append("\n".join(slide_texts))
-
-    return "\n".join(lines), len(prs.slides), img_count
-
-def extract_docx(filepath, basename):
-    doc = Document(filepath)
-    lines = []
-    img_count = 0
-    for para in doc.paragraphs:
-        t = para.text.strip()
-        if t:
-            lines.append(t)
-    for ti, table in enumerate(doc.tables):
-        lines.append(f"\n[表格 {ti+1}]")
-        for row in table.rows:
-            row_texts = []
-            for cell in row.cells:
-                ct = cell.text.strip().replace("\n", " ")
-                row_texts.append(ct)
-            lines.append(" | ".join(row_texts))
-    try:
-        with zipfile.ZipFile(filepath) as z:
-            media_files = [n for n in z.namelist() if n.startswith("word/media/")]
-            for idx, media_path in enumerate(media_files):
-                img_data = z.read(media_path)
-                if not img_data or len(img_data) < 100:
-                    continue
-                original_name = os.path.basename(media_path)
-                ext = os.path.splitext(original_name)[1].lower()
-                if ext not in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'):
-                    ext = _guess_ext_from_bytes(img_data)
-                img_name = f"{basename}_img{idx+1}{ext}"
-                img_path = os.path.join(图片输出目录, img_name)
-                with open(img_path, "wb") as f:
-                    f.write(img_data)
-                lines.append(f"[图片: {img_name}]")
-                img_count += 1
-    except Exception:
-        pass
-
-    return "\n".join(lines), len(doc.paragraphs), img_count
-
-# ============================================================
-# 5. 扫描并提取
-# ============================================================
-HANDLERS = {
-    ".pdf":  extract_pdf,
-    ".pptx": extract_pptx,
-    ".pptm": extract_pptx,
-    ".docx": extract_docx,
-    ".dotx": extract_docx,
-    ".dotm": extract_docx,
-}
-
-目标文件 = []
-for fname in sorted(os.listdir(课件目录)):
-    ext = os.path.splitext(fname)[1].lower()
-    if ext in HANDLERS:
-        目标文件.append(fname)
-
-if not 目标文件:
-    print(f"在 '{课件目录}' 中未找到支持的课件文件，请检查路径。")
-    print(f"支持格式: {', '.join(sorted(set(HANDLERS.keys())))}")
-    sys.exit(1)
-
-print(f"找到 {len(目标文件)} 个课件文件，开始提取文本和图片...\n")
-
-总图片数 = 0
-成功 = 0
-失败 = []
-空内容 = []
-纯图片文件 = []
-
-for idx, fname in enumerate(目标文件, 1):
-    filepath = os.path.join(课件目录, fname)
-    ext = os.path.splitext(fname)[1].lower()
-    basename = _sanitize_filename(Path(fname).stem)
-    handler = HANDLERS[ext]
-
-    # 预检：是否为纯图片文件
-    if _check_likely_image_only(filepath, ext):
-        纯图片文件.append(fname)
-        print(f"  🔍 [{idx}/{len(目标文件)}] {fname} — 检测为纯图片型文件（扫描版PDF等），跳过文本提取")
-        continue
-
-    try:
-        text, page_count, img_count = handler(filepath, basename)
-        header = f"======= {fname} =======\n页数/幻灯片数: {page_count}\n" + "=" * 60
-        if text.strip():
-            outpath = os.path.join(文本输出目录, fname + ".txt")
-            with open(outpath, "w", encoding="utf-8") as f:
-                f.write(header + "\n" + text)
-            成功 += 1
-            总图片数 += img_count
-            img_info = f", {img_count}张图片" if img_count else ""
-            print(f"  ✓ [{成功}/{len(目标文件)}] {fname} ({page_count}p{img_info})")
-        else:
-            空内容.append(fname)
-            print(f"  ⚠ [{成功}/{len(目标文件)}] {fname} — 提取内容为空")
-    except Exception as e:
-        失败.append((fname, str(e)))
-        print(f"  ✗ [{成功}/{len(目标文件)}] {fname} — 错误: {e}")
-
-# ============================================================
-# 6. 结果报告
-# ============================================================
-print(f"\n{'=' * 50}")
-print(f"提取完成: 成功 {成功}/{len(目标文件)}, 共提取 {总图片数} 张图片")
-print(f"  文本目录: {os.path.abspath(文本输出目录)}")
-print(f"  图片目录: {os.path.abspath(图片输出目录)}")
-
-if 纯图片文件:
-    print(f"\n🔍 以下 {len(纯图片文件)} 个文件被检测为纯图片型（扫描版PDF等）：")
-    for fn in 纯图片文件:
-        print(f"  - {fn}")
-    print("这些文件将通过AI视觉能力直接读取，不依赖文本提取。")
-    print("如果你的AI助手不支持图片识别，请参考以下方案：")
-    print("  方案A: 更换为支持视觉的模型（如Claude Opus 4、GPT-4V）")
-    print("  方案B: 安装MCP视觉服务器（如MiniMax MCP）")
-    print("  方案C: 使用本地OCR工具（如Tesseract）预处理为文本")
-
-if 空内容:
-    print(f"\n⚠ 以下文件提取内容为空 ({len(空内容)}个):")
-    for fn in 空内容:
-        print(f"  - {fn}")
-    print("可能原因：PPTX/DOCX只含图片不含文字，或PDF为扫描版。")
-    print("建议：请看上方纯图片检测结果，对应文件将通过AI视觉处理。")
-
-if 失败:
-    print(f"\n✗ 以下文件提取失败 ({len(失败)}个):")
-    for fn, err in 失败:
-        print(f"  - {fn}: {err}")
-
-if not 空内容 and not 失败 and not 纯图片文件:
-    print("所有文件提取成功！")
-```
+**功能说明**：
+- 支持 `.pdf`、`.pptx`/`.pptm`、`.docx`/`.dotx`/`.dotm` 格式
+- 自动检测纯图片型课件（扫描版PDF）并跳过文本提取
+- 自动过滤不兼容浏览器的 EMF/WMF 格式图片
+- 在提取文本中用 `[图片: xxx.png]` 标记图片位置
+- 最后输出详细的提取统计报告
 
 ### 2.2 运行提取
 
@@ -464,24 +162,40 @@ window.MathJax = {
   svg: { fontCache: 'global' }
 };
 </script>
+<!-- 如需离线使用，下载 MathJax 后将 src 改为本地路径 -->
+<!-- <script src="./mathjax/es5/tex-svg.js"></script> -->
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<noscript>
+  <p style="color: #c41e3a; text-align: center; padding: 1rem; border: 2px dashed #c41e3a;">
+    ⚠ 此文档需要 JavaScript 才能正确渲染数学公式。请启用 JavaScript 或使用现代浏览器打开。
+  </p>
+</noscript>
 <style>
   /* ===== CSS Variables ===== */
   :root {
-    --primary: #1a56db;
-    --primary-light: #e8f0fe;
-    --accent: #c41e3a;
-    --accent-light: #fce4e8;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --secondary: #d97706;
+    --secondary-light: #fffbeb;
+    --accent: #dc2626;
+    --accent-light: #fef2f2;
     --bg: #ffffff;
     --bg-soft: #f8fafc;
-    --text: #1e293b;
+    --bg-card: #ffffff;
+    --text: #334155;
+    --text-heading: #1e293b;
     --text-muted: #64748b;
     --border: #e2e8f0;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
     --radius: 8px;
+    --radius-lg: 12px;
     --max-width: 960px;
-    --font-body: system-ui, -apple-system, "Segoe UI", "Noto Sans SC", sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    --toc-width: 240px;
+    --font-body: system-ui, -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
   }
 
   /* ===== Reset & Base ===== */
@@ -490,100 +204,264 @@ window.MathJax = {
   body {
     font-family: var(--font-body);
     color: var(--text);
-    background: var(--bg);
-    line-height: 1.75;
-    max-width: var(--max-width);
-    margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
+    background: #f1f5f9;
+    line-height: 1.8;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
   }
 
+  /* ===== Hero Header ===== */
+  .hero {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 40%, #6366f1 100%);
+    color: #fff;
+    padding: 3rem 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 0.75rem;
+    letter-spacing: -0.02em;
+    border: none;
+    padding: 0;
+  }
+  .hero .hero-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.85;
+    margin-bottom: 1.5rem;
+  }
+  .hero .meta-card {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    font-size: 0.9rem;
+    text-align: left;
+    justify-content: center;
+  }
+  .hero .meta-card .meta-item {
+    white-space: nowrap;
+  }
+  .hero .meta-card strong {
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+
+  /* ===== Page wrapper (for sticky ToC on wide screens) ===== */
+  .page-wrapper {
+    max-width: calc(var(--max-width) + var(--toc-width) + 3rem);
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  /* ===== Sticky ToC ===== */
+  .toc-sidebar {
+    position: sticky;
+    top: 1rem;
+    width: var(--toc-width);
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.2rem 1rem;
+    box-shadow: var(--shadow-sm);
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    font-size: 0.88rem;
+    display: none;
+  }
+  @media (min-width: 1200px) {
+    .toc-sidebar { display: block; }
+  }
+  .toc-sidebar h2 {
+    font-size: 1rem;
+    margin: 0 0 0.75rem;
+    border: none;
+    padding: 0;
+    color: var(--text-heading);
+  }
+  .toc-sidebar ol { padding-left: 1.2rem; list-style: none; }
+  .toc-sidebar li { margin: 0.25rem 0; line-height: 1.5; }
+  .toc-sidebar a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+  .toc-sidebar a:hover { color: var(--primary); }
+  .toc-sidebar ol ol { padding-left: 0.8rem; font-size: 0.82rem; }
+  .toc-sidebar ol ol li { margin: 0.15rem 0; }
+
+  /* ===== Main content column ===== */
+  .main-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ===== Hero-header ToC (mobile fallback) ===== */
+  .toc-inline {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  @media (min-width: 1200px) {
+    .toc-inline { display: none; }
+  }
+  .toc-inline h2 { margin-top: 0; border: none; padding: 0; font-size: 1.1rem; }
+  .toc-inline ol { padding-left: 1.5rem; }
+  .toc-inline li { margin: 0.3rem 0; line-height: 1.6; }
+  .toc-inline ol ol { padding-left: 1.2rem; font-size: 0.92rem; }
+
   /* ===== Typography ===== */
-  h1 { font-size: 2rem; font-weight: 800; color: var(--primary); border-bottom: 3px solid var(--primary); padding-bottom: 0.5rem; margin: 2rem 0 1rem; }
-  h2 { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin: 2.5rem 0 1rem; padding-left: 0.5rem; border-left: 4px solid var(--primary); }
-  h3 { font-size: 1.2rem; font-weight: 600; color: var(--text); margin: 1.8rem 0 0.8rem; }
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin: 2.5rem 0 1rem;
+    letter-spacing: -0.015em;
+  }
+  h2 {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin: 2.5rem 0 1rem;
+    padding-left: 0.75rem;
+    border-left: 4px solid var(--primary);
+  }
+  h3 { font-size: 1.2rem; font-weight: 600; color: var(--text-heading); margin: 1.8rem 0 0.8rem; }
   h4 { font-size: 1.05rem; font-weight: 600; color: var(--text-muted); margin: 1.2rem 0 0.5rem; }
-  p { margin: 0.6rem 0; }
+  p { margin: 0.7rem 0; }
   a { color: var(--primary); text-decoration: none; }
   a:hover { text-decoration: underline; }
+
+  /* ===== Chapter Cards ===== */
+  .chapter-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+    transition: box-shadow 0.2s;
+  }
+  .chapter-card:hover { box-shadow: var(--shadow); }
+  .chapter-card h2 {
+    margin-top: 0;
+    border: none;
+    padding-left: 0;
+  }
 
   /* ===== Blockquote (💡直觉理解) ===== */
   blockquote {
     border-left: 4px solid var(--primary);
     background: var(--primary-light);
-    margin: 1rem 0;
-    padding: 0.8rem 1rem;
-    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 1.2rem 0;
+    padding: 1rem 1.2rem;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
     color: #1e40af;
   }
   blockquote::before { content: "💡 "; font-weight: bold; }
 
   /* ===== Code ===== */
   code { font-family: var(--font-mono); background: var(--bg-soft); padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
-  pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: var(--radius); overflow-x: auto; margin: 1rem 0; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 1.2rem; border-radius: var(--radius-lg); overflow-x: auto; margin: 1rem 0; line-height: 1.6; }
   pre code { background: none; padding: 0; color: inherit; }
 
   /* ===== Tables ===== */
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
-  th, td { border: 1px solid var(--border); padding: 0.6rem 0.8rem; text-align: left; }
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+  th, td { border: 1px solid var(--border); padding: 0.7rem 0.9rem; text-align: left; }
   th { background: var(--primary); color: #fff; font-weight: 600; }
   tr:nth-child(even) { background: var(--bg-soft); }
 
   /* ===== Images ===== */
-  img { max-width: 100%; height: auto; border-radius: var(--radius); box-shadow: var(--shadow); margin: 1rem 0; display: block; }
-  figure { margin: 1.2rem 0; }
-  figcaption { text-align: center; font-size: 0.88rem; color: var(--text-muted); margin-top: 0.3rem; }
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    margin: 1.2rem 0;
+    display: block;
+    border: 1px solid var(--border);
+    transition: transform 0.2s ease;
+  }
+  img:hover { transform: scale(1.01); }
+  figure { margin: 1.5rem 0; }
+  figcaption { text-align: center; font-size: 0.88rem; color: var(--text-muted); margin-top: 0.4rem; }
 
   /* ===== SVG Diagrams ===== */
-  .diagram-container { text-align: center; margin: 1.2rem 0; }
+  .diagram-container { text-align: center; margin: 1.5rem 0; padding: 1rem; background: var(--bg-soft); border-radius: var(--radius-lg); }
   .diagram-container svg { max-width: 100%; height: auto; }
 
-  /* ===== Callout Boxes ===== */
+  /* ===== Callout Boxes (with gradient left accent) ===== */
   .callout {
-    margin: 1rem 0; padding: 0.8rem 1rem; border-radius: var(--radius);
-    border-left: 4px solid;
+    margin: 1.2rem 0;
+    padding: 1rem 1.2rem;
+    border-radius: var(--radius-lg);
+    border-left: 5px solid;
+    box-shadow: var(--shadow-sm);
   }
   .callout-def     { background: #eff6ff; border-color: #3b82f6; } /* 📌 定义 */
-  .callout-key     { background: #fef3c7; border-color: #f59e0b; } /* 🔑 关键关系 */
-  .callout-derive  { background: #f0fdf4; border-color: #22c55e; } /* 📐 完整推导 */
-  .callout-example { background: #fef2f2; border-color: #ef4444; } /* ✏️ 例题 */
-  .callout-warn    { background: #fff7ed; border-color: #f97316; } /* ⚠️ 注意事项 */
-
-  /* ===== Frontmatter Box ===== */
-  .frontmatter {
-    background: linear-gradient(135deg, var(--primary-light), #f0f4ff);
-    border: 2px solid var(--primary);
-    border-radius: var(--radius);
-    padding: 1.2rem 1.5rem;
-    margin: 1rem 0 2rem;
-  }
-  .frontmatter p { margin: 0.25rem 0; }
-
-  /* ===== ToC ===== */
-  .toc { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.5rem; margin: 1.5rem 0; }
-  .toc h2 { margin-top: 0; border: none; padding: 0; }
-  .toc ol { padding-left: 1.5rem; }
-  .toc li { margin: 0.3rem 0; line-height: 1.6; }
-  .toc ol ol { padding-left: 1.2rem; font-size: 0.92rem; }
+  .callout-key     { background: #fffbeb; border-color: #d97706; } /* 🔑 关键关系 */
+  .callout-derive  { background: #f0fdf4; border-color: #16a34a; } /* 📐 完整推导 */
+  .callout-example { background: #fef2f2; border-color: #dc2626; } /* ✏️ 例题 */
+  .callout-warn    { background: #fff7ed; border-color: #ea580c; } /* ⚠️ 注意事项 */
 
   /* ===== Badges ===== */
-  .badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 12px; font-size: 0.82rem; font-weight: 600; }
+  .badge { display: inline-block; padding: 0.2em 0.6em; border-radius: 12px; font-size: 0.82rem; font-weight: 600; }
   .badge-exam    { background: #fee2e2; color: #991b1b; }
   .badge-note    { background: #dbeafe; color: #1e40af; }
   .badge-optional{ background: #f3f4f6; color: #6b7280; }
+  .badge-important { background: #fef3c7; color: #92400e; }
+
+  /* ===== MathJax formula breathing room ===== */
+  mjx-container {
+    padding: 0.15rem 0;
+  }
+
+  /* ===== Footer ===== */
+  .page-footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
 
   /* ===== Print Styles ===== */
   @media print {
-    body { max-width: none; padding: 0.5in; font-size: 11pt; }
-    h1 { font-size: 20pt; } h2 { font-size: 15pt; } h3 { font-size: 12pt; }
-    .toc, .frontmatter, blockquote { break-inside: avoid; }
+    body { background: #fff; }
+    .hero { background: #fff !important; color: #000; border-bottom: 3px solid #000; padding: 1rem 0; }
+    .hero h1 { color: #000; }
+    .hero .meta-card { background: #f5f5f5; border: 1px solid #ccc; color: #000; }
+    .hero .meta-card strong { color: #555; }
+    .toc-sidebar { display: none; }
+    .toc-inline { border: 1px solid #ccc; background: #fff; }
+    .page-wrapper { max-width: none; padding: 0; display: block; }
+    .main-content { max-width: none; }
+    .chapter-card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; page-break-before: always; }
+    .callout { box-shadow: none; break-inside: avoid; }
     img, svg, figure { break-inside: avoid; max-width: 90%; }
+    img:hover { transform: none; }
     a { color: var(--text); }
     pre { white-space: pre-wrap; }
+    h1 { font-size: 20pt; } h2 { font-size: 15pt; } h3 { font-size: 12pt; }
   }
 
   /* ===== Responsive ===== */
   @media (max-width: 768px) {
-    body { padding: 1rem 0.8rem 2rem; }
+    .hero { padding: 2rem 1rem; }
+    .hero h1 { font-size: 1.6rem; }
+    .hero .meta-card { padding: 0.75rem 1rem; gap: 0.25rem 1rem; font-size: 0.82rem; }
+    .page-wrapper { padding: 0 0.8rem 2rem; display: block; }
+    .chapter-card { padding: 1rem 1.2rem; }
     h1 { font-size: 1.5rem; } h2 { font-size: 1.25rem; }
     table { font-size: 0.82rem; }
     th, td { padding: 0.4rem 0.5rem; }
@@ -592,12 +470,36 @@ window.MathJax = {
 </head>
 <body>
 
-<!-- ===== 封面信息 ===== -->
-<div class="frontmatter">
-  <p><strong>📋 考试范围</strong>: [章节范围] | <strong>不考</strong>: [排除章节]</p>
-  <p><strong>📝 考试形式</strong>: [开/闭]卷笔试 | <strong>教师</strong>: [姓名] | <strong>教材</strong>: [书名 版本]</p>
-  <p><strong>📅 生成时间</strong>: [日期] | <strong>课件来源</strong>: [课件文件列表摘要]</p>
-</div>
+<!-- ===== Hero 封面 ===== -->
+<header class="hero">
+  <h1>[课程中文名] 复习完全指南</h1>
+  <p class="hero-subtitle">[英文课程名] · [考试类型]考试</p>
+  <div class="meta-card">
+    <span class="meta-item"><strong>📋 考试范围</strong> [章节范围]</span>
+    <span class="meta-item"><strong>🚫 不考</strong> [排除章节]</span>
+    <span class="meta-item"><strong>📝 形式</strong> [开/闭]卷笔试</span>
+    <span class="meta-item"><strong>👨‍🏫 教师</strong> [姓名]</span>
+    <span class="meta-item"><strong>📚 教材</strong> [书名]</span>
+    <span class="meta-item"><strong>📅 生成时间</strong> [日期]</span>
+  </div>
+</header>
+
+<div class="page-wrapper">
+
+<!-- ===== 侧边栏目录（宽屏固定）===== -->
+<nav class="toc-sidebar">
+  <h2>📑 目录</h2>
+  <ol>
+    <li><a href="#reading-guide">📖 阅读指南</a></li>
+    <li><a href="#ch0">第〇章：课程核心思维</a></li>
+    <!-- 各章节由你根据实际课件填充 -->
+    <li><a href="#appendix-a">附录A：公式速查卡</a></li>
+    <li><a href="#appendix-b">附录B：解题模板</a></li>
+    <li><a href="#appendix-c">附录C：常见错误与陷阱</a></li>
+  </ol>
+</nav>
+
+<main class="main-content">
 
 <!-- ===== 📖 阅读指南 ===== -->
 <h2 id="reading-guide">📖 阅读指南</h2>
@@ -609,8 +511,8 @@ window.MathJax = {
   4. 最后用附录快速查漏补缺
 </blockquote>
 
-<!-- ===== 📑 目录 ===== -->
-<div class="toc">
+<!-- ===== 📑 目录（窄屏内联）===== -->
+<div class="toc-inline">
   <h2>📑 目录</h2>
   <ol>
     <li><a href="#ch0">第〇章：开始之前——课程核心思维</a></li>
@@ -622,6 +524,7 @@ window.MathJax = {
 </div>
 
 <!-- ===== 第〇章：课程核心思维 ===== -->
+<div class="chapter-card">
 <h2 id="ch0">第〇章：开始之前——课程核心思维</h2>
 
 <h3>📌 [课程]的一条主线</h3>
@@ -635,11 +538,13 @@ window.MathJax = {
 
 <h3>📌 为什么要学这些？</h3>
 <p>建立学习动机：这些知识解决什么实际问题。</p>
+</div>
 
 <!-- ============================================================ -->
-<!-- ===== 第N章模板（为每一章复制此结构） ===== -->
+<!-- ===== 第N章模板（为每一章复制此结构，每章一个 .chapter-card）===== -->
 <!-- ============================================================ -->
 
+<div class="chapter-card">
 <h2 id="chN">第N章：[章节名] <span class="badge badge-note">[对应课件文件名]</span></h2>
 
 <blockquote><strong>本章核心任务</strong>: [一句话概括本章在课程中的角色]</blockquote>
@@ -694,11 +599,13 @@ window.MathJax = {
 </div>
 
 <p><strong>关联</strong>：[指向相关概念] → 见 <a href="#chX-Y">第X章 N.X节</a></p>
+</div>
 
 <!-- ============================================================ -->
 <!-- ===== 附录A：公式速查卡 ===== -->
 <!-- ============================================================ -->
 
+<div class="chapter-card">
 <h2 id="appendix-a">附录A：公式速查卡</h2>
 
 <h3>A1. [主题1]</h3>
@@ -706,11 +613,13 @@ window.MathJax = {
   <tr><th>公式</th><th>名称</th><th>说明</th></tr>
   <tr><td>$$\boxed{[公式]}$$</td><td>[名称]</td><td>[一句话说明用途和条件]</td></tr>
 </table>
+</div>
 
 <!-- ============================================================ -->
 <!-- ===== 附录B：解题模板 ===== -->
 <!-- ============================================================ -->
 
+<div class="chapter-card">
 <h2 id="appendix-b">附录B：解题模板</h2>
 
 <h3>B1. [题型名称]</h3>
@@ -721,11 +630,13 @@ window.MathJax = {
   <li><strong>[步骤名]</strong>：[具体操作]</li>
 </ol>
 <pre><code>[伪代码或Python代码——可选]</code></pre>
+</div>
 
 <!-- ============================================================ -->
 <!-- ===== 附录C：常见错误 ===== -->
 <!-- ============================================================ -->
 
+<div class="chapter-card">
 <h2 id="appendix-c">附录C：常见错误与陷阱</h2>
 <table>
   <tr><th>#</th><th>常见错误</th><th>为什么错</th><th>正确做法</th></tr>
@@ -736,13 +647,16 @@ window.MathJax = {
     <td>[正确做法]</td>
   </tr>
 </table>
+</div>
 
 <!-- ===== 页脚 ===== -->
-<hr style="margin-top:3rem; border-color:var(--border);">
-<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">
-  本文档由 AI 助手基于课程课件自动生成 | [生成日期]<br>
-  内容仅供参考，请以教材和教师授课为准
-</p>
+<div class="page-footer">
+  <p>本文档由 AI 助手基于课程课件自动生成 | [生成日期]<br>
+  内容仅供参考，请以教材和教师授课为准</p>
+</div>
+
+</main><!-- .main-content -->
+</div><!-- .page-wrapper -->
 
 </body>
 </html>
@@ -761,6 +675,8 @@ window.MathJax = {
 </figure>
 ```
 
+**图片格式说明**：提取脚本会自动过滤浏览器不兼容的图片格式（EMF/WMF），仅保留 PNG、JPG、GIF、BMP、WebP 等 Web 兼容格式。如果提取文本中出现 `[图片: xxx.emf]` 标记但对应文件不存在，说明该图片已被自动跳过——此时可考虑用 SVG 示意图替代。
+
 **必须引用的图片类型**：
 - 核心概念示意图（系统框图、信号流程图、物理模型图）
 - 关键公式的图解推导（几何解释、坐标变换示意图）
@@ -773,6 +689,8 @@ window.MathJax = {
 - 分辨率过低无法辨认的图片
 
 **每章至少引用3张课件原图，每个核心概念至少配1张示意图。**
+
+**图片内嵌（后处理）**：HTML生成完成后，运行 `python embed_images.py <文件名>.html` 将相对路径图片转换为 base64 data URI，生成完全自包含的 HTML 文件，方便分享和打印。
 
 #### 4.4.2 SVG示意图生成
 
@@ -893,12 +811,108 @@ window.MathJax = {
 - [ ] 各章节标注对应课件来源
 - [ ] 目录锚点链接与章节id一一对应
 - [ ] MathJax CDN引用正确，HTML在浏览器中可正常渲染
+- [ ] 已运行 `embed_images.py` 将图片内嵌为 base64（如适用）
 - [ ] 移动端和打印样式均可用
+
+---
+
+## Phase 6：考试押题文档（可选）
+
+在复习文档生成完毕后，询问用户是否还需要生成一份**考试押题文档**。这是一个基于课程内容分析的预测性练习文档，帮助学生在考前针对性查漏补缺。
+
+### 6.1 确认需求
+
+询问用户：
+1. 是否需要押题文档？
+2. 输出为**单独的 HTML 文件**还是**追加到复习文档末尾**？
+3. 考试题型有哪些？（选择题、填空题、简答题、计算题等）
+4. 期望的题目数量？
+
+### 6.2 押题分析
+
+在生成押题前，AI 需分析课程内容中的以下信号：
+
+1. **高频概念**：在多个章节/课件中反复出现的概念
+2. **重点推导**：课件中有完整推导过程的公式（授课者花了时间讲解）
+3. **课件标注**：课件中标记为"重点""掌握""必考"的内容
+4. **例题分布**：课件中提供的例题类型和对应的知识点
+5. **跨章节主题**：连接多个章节的综合性概念（常出综合题）
+6. **套公式题型**：流程化的计算题（常出大题）
+7. **概念对比**：容易混淆的概念对（常出简答/辨析题）
+
+### 6.3 押题文档结构
+
+```
+1. 押题概述：预测题型分布、各章节出题概率、难度预估
+2. 分章节押题（每章）：
+   - 🔴 高频考点：[概念] —— 预测理由、可能出题形式
+   - 📐 重点推导题：2-4 道完整推导题及详细解答
+   - ✏️ 概念应用题：2-3 道简答/计算题及解答
+3. 模拟试卷：一份完整的预测试卷
+   - 按用户指定的题型结构编排
+   - 参考答案与评分要点
+4. 附录：押题依据表（每道题 → 对应课件页码/幻灯片）
+```
+
+### 6.4 押题文档HTML模板
+
+添加以下CSS变量和样式块到押题文档的 `<style>` 中（押题文档使用独立的极简试卷风格）：
+
+```html
+<style>
+  /* 试卷风格变量覆盖 */
+  :root {
+    --primary: #1a1a2e;
+    --primary-dark: #0f0f1a;
+    --bg: #fafaf9;
+    --text: #1a1a2e;
+    --font-body: "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
+  }
+
+  /* 可折叠解答 */
+  details.solution {
+    margin: 0.8rem 0;
+    padding: 0.8rem 1rem;
+    background: #f0f9ff;
+    border: 1px dashed #3b82f6;
+    border-radius: 8px;
+  }
+  details.solution summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #2563eb;
+    user-select: none;
+  }
+
+  /* 打印时隐藏解答 */
+  @media print {
+    .no-print-solution details.solution { display: none; }
+    body { font-size: 12pt; }
+    h1 { font-size: 18pt; }
+  }
+</style>
+```
+
+**答案展示规范**：
+- 完整推导过程（不要省略步骤）
+- 最终结果用 `\boxed{}` 标注
+- 每题后标注**考点来源**（对应课件文件+页码）
+- 评分要点（如有分值）
+- 常见错误预判
+
+### 6.5 押题原则
+
+1. **基于课件，不臆测**：每个预测必须有对应的课件内容支撑
+2. **区分优先级**：用 🔴🟡🟢 标记预测置信度
+3. **覆盖重点**：优先覆盖课件中反复强调和完整推导的内容
+4. **完整性**：推导题必须提供从起点到结果的完整步骤
+5. **不替代复习文档**：押题文档是补充练习，不得省略复习文档中的基础概念讲解
+6. **实事求是**：如果课程内容不足以支撑有质量的押题，诚实告知用户
 
 ---
 
 ## 输出
 
-将生成的HTML保存为用户指定的文件名。
+将生成的HTML保存为用户指定的文件名。如用户请求了押题文档（Phase 6），一并生成。
 
-向用户报告文档统计：章节数、例题数、公式数（近似）、补全的推导数、引用课件图片数、生成SVG数、附录条目数。
+向用户报告文档统计：章节数、例题数、公式数（近似）、补全的推导数、引用课件图片数、生成SVG数、附录条目数、押题数（如有）。

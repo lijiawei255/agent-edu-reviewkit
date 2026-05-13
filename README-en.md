@@ -142,8 +142,10 @@ The AI will guide you through:
 1. Confirming the courseware directory and exam scope
 2. Running the extraction script (`extract_course_materials.py`)
 3. Generating the HTML review document
+4. Running `embed_images.py` to get a self-contained HTML
+5. (Optional) Generating an exam prediction document
 
-The output is a single `.html` file — open it in any browser to read or print.
+The output is a single, self-contained `.html` file — open it in any browser to read or print.
 
 ---
 
@@ -175,7 +177,7 @@ The AI scans your courseware directory, lists all files, and confirms:
 The AI guides you to run `extract_course_materials.py`:
 
 ```bash
-# 1. Edit the config section (line 44-46) to set your actual paths
+# 1. Edit the config section (lines 49-53) to set your actual paths
 # 2. Run the script
 python extract_course_materials.py
 ```
@@ -200,12 +202,18 @@ The AI searches for supplementary context from:
 The AI produces a single-file HTML document with:
 - **MathJax** rendering for all mathematical formulas (LaTeX)
 - **Inline SVG** diagrams (flowcharts, block diagrams, comparison charts, plots)
-- **Original courseware images** (via relative paths)
-- **CSS styles** (responsive design + print media queries)
+- **Original courseware images** (relative paths during generation, then base64-embedded via `embed_images.py`)
+- **CSS styles** (responsive design + print queries + sticky sidebar ToC on wide screens)
+
+After generation, run `python embed_images.py <filename>.html` to inline all images, producing a fully self-contained HTML file.
 
 ### Phase 5: Quality Assurance
 
-The AI runs a 16-item checklist to verify completeness and correctness.
+The AI runs a 17-item checklist to verify completeness and correctness.
+
+### Phase 6: Exam Prediction (Optional)
+
+After finishing the review document, the AI can generate an **exam prediction document** based on course content analysis — including high-frequency topic predictions, chapter exercises, a mock exam paper with solutions, helping students target weak areas before the exam.
 
 ### Image Recognition Capabilities
 
@@ -260,11 +268,12 @@ PDF text extraction can damage formulas. This skill automatically detects and fi
 
 ### Q: The generated HTML file is too large?
 
-The HTML itself is compact — CSS and inline SVG add minimal weight. Courseware images are referenced by relative paths, not embedded as base64, keeping the file manageable. To share, bundle the HTML with the `extracted_images/` folder.
+CSS and inline SVG add minimal weight. After running `embed_images.py` to base64-embed images, the file grows (about 1.37× total image size) but becomes fully self-contained — ideal for sharing. If the file is too large, skip embedding and bundle the HTML with the `extracted_images/` folder instead.
 
-### Q: How do I print the review document?
+### Q: How do I share and print the review document?
 
-The HTML includes `@media print` styles. Open in a browser and press `Ctrl+P` (or `Cmd+P`). Print styles automatically optimize font sizes and hide non-essential elements.
+- **Share**: Run `python embed_images.py <filename>.html` to get a `_embedded.html` with all images inlined — one file is all you need
+- **Print**: Open the HTML in a browser and press `Ctrl+P` (or `Cmd+P`). Built-in `@media print` styles optimize the layout automatically
 
 ### Q: Which file formats are supported?
 
@@ -275,6 +284,12 @@ The HTML includes `@media print` styles. Open in a browser and press `Ctrl+P` (o
 | Word | `.docx`, `.dotx`, `.dotm` | ✅ Fully supported |
 | Legacy PowerPoint | `.ppt` | ❌ Not supported — resave as `.pptx` |
 | Legacy Word | `.doc` | ❌ Not supported — resave as `.docx` |
+
+### Q: How do I view formulas without internet access?
+
+The generated HTML loads formula rendering from the MathJax CDN, which requires internet. For offline use:
+1. **Print to PDF**: Open the HTML in a browser with internet, then use "Print → Save as PDF"
+2. **Local MathJax**: Download the full MathJax package from [GitHub](https://github.com/mathjax/MathJax), extract to a `mathjax/` folder next to the HTML file, and change the MathJax `<script>` `src` to `./mathjax/es5/tex-svg.js`
 
 ### Q: My course is taught in English. Will this work?
 
