@@ -4,10 +4,12 @@
 所有依赖均为纯Python库，pip一键安装，无C编译依赖。
 
 使用方法:
-  1. 修改下方"配置区"的 课件目录、文本输出目录、图片输出目录
-  2. 运行: python extract_course_materials.py
+  1. 直接运行默认配置: python extract_course_materials.py
+  2. 指定目录运行: python extract_course_materials.py --course-dir "课件目录" --output-dir "输出目录"
+  3. 为多模态模型生成整页截图: python extract_course_materials.py --course-dir "课件目录" --output-dir "输出目录" --render-pages
 """
 
+import argparse
 import os
 import sys
 import zipfile
@@ -45,15 +47,38 @@ if MISSING:
     print("=" * 50)
     sys.exit(1)
 
+def _parse_args():
+    parser = argparse.ArgumentParser(description="提取课程课件文本和图片")
+    parser.add_argument("--course-dir", default=None, help="课件所在目录路径")
+    parser.add_argument("--output-dir", default=None, help="输出根目录；将自动创建 extracted_text/ 和 extracted_images/")
+    parser.add_argument("--text-output-dir", default=None, help="文本输出目录；未设置时使用 output-dir/extracted_text 或 extracted_text")
+    parser.add_argument("--image-output-dir", default=None, help="图片输出目录；未设置时使用 output-dir/extracted_images 或 extracted_images")
+    parser.add_argument("--render-pages", action="store_true", help="将 PDF 每页渲染为整页截图，供多模态模型理解版式和图文关系")
+    parser.add_argument("--page-output-dir", default=None, help="整页截图输出目录；未设置时使用 output-dir/page_images 或 page_images")
+    parser.add_argument("--page-dpi", type=int, default=160, help="PDF 整页截图渲染 DPI，默认 160")
+    return parser.parse_args()
+
+
 # ============================================================
-# 1. 配置区 —— 用户根据需要修改以下变量
+# 1. 配置区 —— 可通过命令行参数覆盖
 # ============================================================
-课件目录 = r"课件"               # 课件所在目录路径
-文本输出目录 = r"extracted_text"   # 提取文本输出目录
-图片输出目录 = r"extracted_images" # 提取图片输出目录
+_args = _parse_args()
+
+课件目录 = _args.course_dir or r"课件"               # 课件所在目录路径
+if _args.output_dir:
+    输出根目录 = Path(_args.output_dir)
+    文本输出目录 = str(Path(_args.text_output_dir) if _args.text_output_dir else 输出根目录 / "extracted_text")
+    图片输出目录 = str(Path(_args.image_output_dir) if _args.image_output_dir else 输出根目录 / "extracted_images")
+    页面输出目录 = str(Path(_args.page_output_dir) if _args.page_output_dir else 输出根目录 / "page_images")
+else:
+    文本输出目录 = _args.text_output_dir or r"extracted_text"   # 提取文本输出目录
+    图片输出目录 = _args.image_output_dir or r"extracted_images" # 提取图片输出目录
+    页面输出目录 = _args.page_output_dir or r"page_images"       # PDF整页截图输出目录
 
 os.makedirs(文本输出目录, exist_ok=True)
 os.makedirs(图片输出目录, exist_ok=True)
+if _args.render_pages:
+    os.makedirs(页面输出目录, exist_ok=True)
 
 # ============================================================
 # 2. 工具函数
@@ -159,6 +184,29 @@ def extract_pdf(filepath, basename):
             pass
 
     return "\n".join(lines), len(reader.pages), img_count
+
+
+def render_pdf_pages(filepath, basename):
+    """将 PDF 渲染为整页 PNG 截图，保留页面版式和图文关系。"""
+    try:
+        import fitz  # PyMuPDF
+    except ImportError as exc:
+        raise RuntimeError("缺少 PyMuPDF，无法渲染整页截图；请安装 pymupdf") from exc
+
+    doc = fitz.open(filepath)
+    zoom = _args.page_dpi / 72
+    matrix = fitz.Matrix(zoom, zoom)
+    rendered = 0
+
+    for i, page in enumerate(doc, 1):
+        pix = page.get_pixmap(matrix=matrix, alpha=False)
+        out_name = f"{basename}_p{i}.png"
+        out_path = os.path.join(页面输出目录, out_name)
+        pix.save(out_path)
+        rendered += 1
+
+    doc.close()
+    return rendered
 
 
 def extract_pptx(filepath, basename):
@@ -282,6 +330,7 @@ if not 目标文件:
 print(f"找到 {len(目标文件)} 个课件文件，开始提取文本和图片...\n")
 
 总图片数 = 0
+总页面截图数 = 0
 成功 = 0
 失败 = []
 空内容 = []
@@ -296,11 +345,23 @@ for idx, fname in enumerate(目标文件, 1):
     # 预检：是否为纯图片文件
     if _check_likely_image_only(filepath, ext):
         纯图片文件.append(fname)
-        print(f"  🔍 [{idx}/{len(目标文件)}] {fname} — 检测为纯图片型文件（扫描版PDF等），跳过文本提取")
+        render_info = ""
+        if _args.render_pages and ext == ".pdf":
+            try:
+                page_rendered = render_pdf_pages(filepath, basename)
+                总页面截图数 += page_rendered
+                render_info = f"，已渲染 {page_rendered} 张整页截图"
+            except Exception as e:
+                失败.append((fname, f"整页截图渲染失败: {e}"))
+        print(f"  🔍 [{idx}/{len(目标文件)}] {fname} — 检测为纯图片型文件（扫描版PDF等），跳过文本提取{render_info}")
         continue
 
     try:
         text, page_count, img_count = handler(filepath, basename)
+        page_rendered = 0
+        if _args.render_pages and ext == ".pdf":
+            page_rendered = render_pdf_pages(filepath, basename)
+            总页面截图数 += page_rendered
         header = f"======= {fname} =======\n页数/幻灯片数: {page_count}\n" + "=" * 60
 
         if text.strip():
@@ -310,7 +371,8 @@ for idx, fname in enumerate(目标文件, 1):
             成功 += 1
             总图片数 += img_count
             img_info = f", {img_count}张图片" if img_count else ""
-            print(f"  ✓ [{成功}/{len(目标文件)}] {fname} ({page_count}p{img_info})")
+            page_info = f", {page_rendered}张整页截图" if page_rendered else ""
+            print(f"  ✓ [{成功}/{len(目标文件)}] {fname} ({page_count}p{img_info}{page_info})")
         else:
             空内容.append(fname)
             print(f"  ⚠ [{成功}/{len(目标文件)}] {fname} — 提取内容为空")
@@ -325,6 +387,9 @@ print(f"\n{'=' * 50}")
 print(f"提取完成: 成功 {成功}/{len(目标文件)}, 共提取 {总图片数} 张图片")
 print(f"  文本目录: {os.path.abspath(文本输出目录)}")
 print(f"  图片目录: {os.path.abspath(图片输出目录)}")
+if _args.render_pages:
+    print(f"  整页截图目录: {os.path.abspath(页面输出目录)}")
+    print(f"  共渲染 {总页面截图数} 张整页截图")
 
 if 纯图片文件:
     print(f"\n🔍 以下 {len(纯图片文件)} 个文件被检测为纯图片型（扫描版PDF等）：")
