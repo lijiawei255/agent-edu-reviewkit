@@ -7,7 +7,40 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 
 ## 概述
 
-本技能将课程原始课件一键转化为高质量、结构化、图文并茂的**单文件HTML考试复习文档**。输出包含MathJax数学排版、内联SVG示意图、课件原图、完整公式推导、例题详解、答题模板和常见错误附录。**公式残缺处自动还原，推导跳跃处自动补全，确保基础薄弱的学生仅靠本文档即可高效复习。**
+本技能将课程原始课件一键转化为高质量、结构化、图文并茂的**单文件HTML交互式考试复习文档**。输出包含MathJax数学排版、内联SVG示意图、课件原图、完整公式推导、例题详解、交互式学习组件（可折叠推导、选项卡视图、练习测验、术语闪卡、进度追踪）、答题模板和常见错误附录。**公式残缺处自动还原，推导跳跃处自动补全，确保基础薄弱的学生仅靠本文档即可高效复习。**
+
+---
+
+## Agent 平台说明
+
+本技能支持多种 AI 编程助手和自主智能体平台。各平台适配详情见项目根目录的 `AGENTS.md`。
+
+| 平台 | 优先级 | 配置文件 | 交互模式 |
+|------|--------|----------|----------|
+| Claude Code | P0 | CLAUDE.md | 完整交互 |
+| Codex | P0 | codex.md | 完整交互 |
+| OpenCode | P1 | AGENTS.md, opencode.json | 完整交互 |
+| OpenClaw/Hermes | P2 | AGENTS.md | 自主（有限交互） |
+
+### OpenCode 适配
+
+运行 OpenCode 时：
+1. **文件发现**：使用 `Glob` 而非 `Bash("ls ...")`
+2. **图片识别**：直接尝试图片读取，不依赖 `ListMcpResourcesTool`
+3. **Python 执行**：使用 `Bash("python3 ...")`，优先使用 `python3`
+4. **用户交互**：OpenCode 支持完整交互式会话，Phase 1 范围确认按原流程执行
+5. **文件写入**：使用 `Write` 工具
+
+### OpenClaw / Hermes 适配（自主模式）
+
+作为自主 agent 运行时，**不能等待交互式用户响应**：
+
+1. **范围确定**：首先检查课件目录中是否有 `exam-scope.json`。如找到，读取所有值跳过交互确认。如未找到，从文件名和内容推断范围，所有推断值标注 `[自动推断 - 请验证]`。
+2. **渐进式失败**：一个阶段失败时，生成已完成部分并标注缺失，而非完全停止。
+3. **输出信令**：完成后输出源文件列表、推断/配置的范围、待验证项、不完整章节。
+4. **无交互暂停**：使用"检查是否存在"、"推断自"替代"询问用户"。
+5. **范围配置模板**：如未找到 `exam-scope.json`，在课件目录自动生成 `exam-scope-template.json`（含推断默认值），供用户下次填写。
+6. **自主模式横幅**：HTML 文档顶部插入醒目横幅，提醒用户考试范围为自动推断。
 
 ---
 
@@ -453,6 +486,219 @@ window.MathJax = {
     a { color: var(--text); }
     pre { white-space: pre-wrap; }
     h1 { font-size: 20pt; } h2 { font-size: 15pt; } h3 { font-size: 12pt; }
+    details.derive-steps { display: block; }
+    details.derive-steps > summary::before { display: none; }
+    details.derive-steps > .derive-content { display: block; padding: 0; border: none; }
+    .tab-buttons { display: none; }
+    .tab-panel { display: block !important; }
+    .quiz-section { border: 1px solid #ccc; background: #fff; }
+    details.quiz-answer > .answer-content { display: block; }
+    .flashcard { perspective: none; height: auto; break-inside: avoid; }
+    .flashcard-inner { transform: none !important; transform-style: flat; }
+    .flashcard-front, .flashcard-back { position: relative; backface-visibility: visible; }
+    .flashcard-back { transform: none; margin-top: 0.5rem; }
+    .progress-tracker { display: none; }
+    .search-container { display: none; }
+  }
+
+  /* ===== Interactive: Collapsible Derivation Steps ===== */
+  details.derive-steps {
+    margin: 1rem 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-soft);
+  }
+  details.derive-steps > summary {
+    padding: 0.8rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--primary);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    user-select: none;
+  }
+  details.derive-steps > summary::before {
+    content: "▶";
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+  }
+  details.derive-steps[open] > summary::before {
+    transform: rotate(90deg);
+  }
+  details.derive-steps > .derive-content {
+    padding: 0.5rem 1rem 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ===== Interactive: Tabbed Content ===== */
+  .tab-container { margin: 1.5rem 0; }
+  .tab-buttons { display: flex; gap: 0; border-bottom: 2px solid var(--border); }
+  .tab-btn {
+    padding: 0.6rem 1.2rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.2s, border-color 0.2s;
+    font-family: var(--font-body);
+  }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-panel { display: none; padding: 1rem 0; }
+  .tab-panel.active { display: block; }
+
+  /* ===== Interactive: Quiz ===== */
+  .quiz-section {
+    margin: 2rem 0;
+    border: 2px solid var(--primary-light);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    background: #fafbff;
+  }
+  .quiz-section h3 { color: var(--primary); }
+  .quiz-item {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  details.quiz-answer { margin-top: 0.8rem; }
+  details.quiz-answer > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--secondary);
+    user-select: none;
+    padding: 0.3rem 0;
+  }
+  details.quiz-answer > .answer-content {
+    padding: 0.8rem 1rem;
+    margin-top: 0.5rem;
+    background: var(--secondary-light);
+    border-radius: var(--radius);
+  }
+
+  /* ===== Interactive: Flashcard ===== */
+  .flashcard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .flashcard {
+    perspective: 600px;
+    height: 160px;
+    cursor: pointer;
+  }
+  .flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+  }
+  .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+  .flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.95rem;
+  }
+  .flashcard-front {
+    background: var(--primary-light);
+    border: 2px solid var(--primary);
+    color: var(--primary-dark);
+    font-weight: 700;
+  }
+  .flashcard-back {
+    background: var(--secondary-light);
+    border: 2px solid var(--secondary);
+    transform: rotateY(180deg);
+    font-size: 0.88rem;
+  }
+
+  /* ===== Interactive: Progress Tracker ===== */
+  .progress-tracker {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .progress-bar-container {
+    background: var(--bg-soft);
+    border-radius: 20px;
+    height: 8px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), #6366f1);
+    border-radius: 20px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .progress-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .section-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    margin: 0.3rem 0;
+    cursor: pointer;
+  }
+  .section-checkbox input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* ===== Interactive: Search ===== */
+  .search-container { margin: 1rem 0 1.5rem; position: relative; }
+  .search-input {
+    width: 100%;
+    padding: 0.6rem 1rem 0.6rem 2.2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.92rem;
+    font-family: var(--font-body);
+    background: var(--bg);
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { outline: none; border-color: var(--primary); }
+  .search-icon {
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+
+  /* ===== Autonomous Mode Banner ===== */
+  .autonomous-banner {
+    background: linear-gradient(90deg, #fef3c7, #fde68a);
+    border: 2px solid #f59e0b;
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    text-align: center;
   }
 
   /* ===== Responsive ===== */
@@ -489,17 +735,34 @@ window.MathJax = {
 <!-- ===== 侧边栏目录（宽屏固定）===== -->
 <nav class="toc-sidebar">
   <h2>📑 目录</h2>
+  <div class="progress-tracker">
+    <div class="progress-bar-container"><div class="progress-bar-fill"></div></div>
+    <div class="progress-text">0/N sections completed (0%)</div>
+  </div>
   <ol>
-    <li><a href="#reading-guide">📖 阅读指南</a></li>
-    <li><a href="#ch0">第〇章：课程核心思维</a></li>
-    <!-- 各章节由你根据实际课件填充 -->
-    <li><a href="#appendix-a">附录A：公式速查卡</a></li>
-    <li><a href="#appendix-b">附录B：解题模板</a></li>
-    <li><a href="#appendix-c">附录C：常见错误与陷阱</a></li>
+    <li><label class="section-checkbox"><input type="checkbox" data-section="reading-guide"><a href="#reading-guide">📖 阅读指南</a></label></li>
+    <li><label class="section-checkbox"><input type="checkbox" data-section="ch0"><a href="#ch0">第〇章：课程核心思维</a></label></li>
+    <!-- 各章节由你根据实际课件填充，每项使用 section-checkbox 格式 -->
+    <li><label class="section-checkbox"><input type="checkbox" data-section="appendix-a"><a href="#appendix-a">附录A：公式速查卡</a></label></li>
+    <li><label class="section-checkbox"><input type="checkbox" data-section="appendix-b"><a href="#appendix-b">附录B：解题模板</a></label></li>
+    <li><label class="section-checkbox"><input type="checkbox" data-section="appendix-c"><a href="#appendix-c">附录C：常见错误与陷阱</a></label></li>
   </ol>
 </nav>
 
 <main class="main-content">
+
+<!-- ===== 🔍 搜索栏 ===== -->
+<div class="search-container">
+  <span class="search-icon">🔍</span>
+  <input type="text" class="search-input" placeholder="搜索概念、公式、术语...">
+</div>
+
+<!-- ===== 自主模式横幅（仅自主 agent 生成时包含）===== -->
+<!-- <div class="autonomous-banner">
+  <strong>⚠ 此文档由自主代理自动生成</strong><br>
+  考试范围为自动推断，<strong>请仔细核对</strong>以下信息是否正确。<br>
+  <span style="font-size: 0.85rem; color: #92400e;">如需修正，请编辑课件目录中的 <code>exam-scope.json</code> 后重新生成。</span>
+</div> -->
 
 <!-- ===== 📖 阅读指南 ===== -->
 <h2 id="reading-guide">📖 阅读指南</h2>
@@ -549,6 +812,38 @@ window.MathJax = {
 
 <blockquote><strong>本章核心任务</strong>: [一句话概括本章在课程中的角色]</blockquote>
 
+<!-- ===== 选项卡：快速复习 / 详细讲解 ===== -->
+<div class="tab-container">
+  <div class="tab-buttons">
+    <button class="tab-btn active">⚡ 快速复习</button>
+    <button class="tab-btn">📖 详细讲解</button>
+  </div>
+
+  <!-- ===== 快速复习面板 ===== -->
+  <div class="tab-panel active">
+    <p><strong>章节概要</strong>：[2-3句话概括本章要点]</p>
+
+    <!-- 术语闪卡 -->
+    <div class="flashcard-grid">
+      <div class="flashcard" onclick="this.classList.toggle('flipped')">
+        <div class="flashcard-inner">
+          <div class="flashcard-front">[术语/概念名]</div>
+          <div class="flashcard-back">[一句话定义或核心公式]</div>
+        </div>
+      </div>
+      <!-- 每个核心概念一张闪卡，每章至少3-5张 -->
+    </div>
+
+    <h3>🔑 本章关键公式</h3>
+    <table>
+      <tr><th>公式</th><th>名称</th><th>说明</th></tr>
+      <tr><td>$$\boxed{[公式]}$$</td><td>[名称]</td><td>[一句话说明]</td></tr>
+    </table>
+  </div>
+
+  <!-- ===== 详细讲解面板 ===== -->
+  <div class="tab-panel">
+
 <!-- ===== N.M 小节 ===== -->
 <h3 id="chN-M">📌 [概念中文名] ([English Term])</h3>
 
@@ -566,18 +861,20 @@ window.MathJax = {
 
 <blockquote><strong>直观理解</strong>：[用日常比喻或通俗语言解释这个概念]</blockquote>
 
-<!-- 如果课件中推导有省略，补全完整推导 -->
-<div class="callout callout-derive">
-  <p>📐 <strong>推导：[定理/公式名]的完整推导</strong></p>
-  <p>从 [起点公式/定义] 出发：</p>
-  <p><strong>第1步</strong>：[操作描述——做了什么 + 为什么这样做]</p>
-  <p>$$[中间表达式1]$$</p>
-  <p><strong>第2步</strong>：[操作描述]</p>
-  <p>$$[中间表达式2]$$</p>
-  <p>……</p>
-  <p><strong>最终结果</strong>：</p>
-  <p>$$\boxed{[最终公式]}$$</p>
-</div>
+<!-- 可折叠推导步骤 -->
+<details class="derive-steps">
+  <summary>📐 推导：[定理/公式名]的完整推导</summary>
+  <div class="derive-content">
+    <p>从 [起点公式/定义] 出发：</p>
+    <p><strong>第1步</strong>：[操作描述——做了什么 + 为什么这样做]</p>
+    <p>$$[中间表达式1]$$</p>
+    <p><strong>第2步</strong>：[操作描述]</p>
+    <p>$$[中间表达式2]$$</p>
+    <p>……</p>
+    <p><strong>最终结果</strong>：</p>
+    <p>$$\boxed{[最终公式]}$$</p>
+  </div>
+</details>
 
 <!-- 如果需要SVG辅助解释推导过程，生成内联SVG -->
 <div class="diagram-container">
@@ -599,6 +896,25 @@ window.MathJax = {
 </div>
 
 <p><strong>关联</strong>：[指向相关概念] → 见 <a href="#chX-Y">第X章 N.X节</a></p>
+
+  </div><!-- .tab-panel 详细讲解 -->
+</div><!-- .tab-container -->
+
+<!-- ===== 练习测验 ===== -->
+<div class="quiz-section">
+  <h3>📝 练习检测</h3>
+  <div class="quiz-item">
+    <p><strong>Q1.</strong> [概念检查题]</p>
+    <details class="quiz-answer">
+      <summary>显示答案</summary>
+      <div class="answer-content">
+        <p>[答案及解析]</p>
+      </div>
+    </details>
+  </div>
+  <!-- 每章2-4道练习题 -->
+</div>
+
 </div>
 
 <!-- ============================================================ -->
@@ -657,6 +973,82 @@ window.MathJax = {
 
 </main><!-- .main-content -->
 </div><!-- .page-wrapper -->
+
+<script>
+// === Tab Switching ===
+document.querySelectorAll('.tab-container').forEach(function(container) {
+  var buttons = container.querySelectorAll('.tab-btn');
+  var panels = container.querySelectorAll('.tab-panel');
+  buttons.forEach(function(btn, i) {
+    btn.addEventListener('click', function() {
+      buttons.forEach(function(b) { b.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      panels[i].classList.add('active');
+    });
+  });
+});
+
+// === Flashcard Flip ===
+document.querySelectorAll('.flashcard').forEach(function(card) {
+  card.addEventListener('click', function() {
+    card.classList.toggle('flipped');
+  });
+});
+
+// === Progress Tracker ===
+(function() {
+  var checkboxes = document.querySelectorAll('.section-checkbox input[type="checkbox"]');
+  var total = checkboxes.length;
+  var fill = document.querySelector('.progress-bar-fill');
+  var text = document.querySelector('.progress-text');
+  function updateProgress() {
+    var checked = document.querySelectorAll('.section-checkbox input:checked').length;
+    var pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+    if (fill) fill.style.width = pct + '%';
+    if (text) text.textContent = checked + '/' + total + ' sections completed (' + pct + '%)';
+    try {
+      var state = {};
+      checkboxes.forEach(function(cb, i) { state['sec_' + i] = cb.checked; });
+      localStorage.setItem('review_progress_' + location.pathname, JSON.stringify(state));
+    } catch(e) {}
+  }
+  try {
+    var saved = JSON.parse(localStorage.getItem('review_progress_' + location.pathname) || '{}');
+    checkboxes.forEach(function(cb, i) { if (saved['sec_' + i]) cb.checked = true; });
+  } catch(e) {}
+  checkboxes.forEach(function(cb) { cb.addEventListener('change', updateProgress); });
+  updateProgress();
+})();
+
+// === Search/Filter ===
+(function() {
+  var input = document.querySelector('.search-input');
+  if (!input) return;
+  var mainContent = document.querySelector('.main-content');
+  input.addEventListener('input', function() {
+    var query = this.value.trim().toLowerCase();
+    var cards = mainContent.querySelectorAll('.chapter-card');
+    if (!query) {
+      cards.forEach(function(c) { c.style.display = ''; });
+      return;
+    }
+    cards.forEach(function(card) {
+      var txt = card.textContent.toLowerCase();
+      card.style.display = txt.includes(query) ? '' : 'none';
+    });
+  });
+})();
+
+// === MathJax Re-render on Details Toggle ===
+document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(function(det) {
+  det.addEventListener('toggle', function() {
+    if (det.open && window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise([det]).catch(function() {});
+    }
+  });
+});
+</script>
 
 </body>
 </html>
@@ -748,7 +1140,7 @@ window.MathJax = {
 - 🟢 可选：纯代数化简每一步
 - ⚪ 不需要：教材中已有完整推导（引用教材页码即可）
 
-### 4.6 图标系统
+### 4.6 图标与交互系统
 
 在HTML中使用以下CSS类对应图标：
 
@@ -756,10 +1148,23 @@ window.MathJax = {
 |------|-------|------|
 | 📌 | `.callout-def` | 核心概念/定义 |
 | 🔑 | `.callout-key` | 关键关系/定理 |
-| 📐 | `.callout-derive` | 完整推导 |
+| 📐 | `details.derive-steps` | 可折叠完整推导 |
 | ✏️ | `.callout-example` | 例题 |
 | 💡 | `blockquote` | 直观理解 |
 | ⚠️ | `.callout-warn` | 注意事项/易错点 |
+| 📝 | `.quiz-section` | 练习测验 |
+| 🃏 | `.flashcard` | 术语闪卡（点击翻转） |
+
+交互元素使用规范：
+
+| 交互组件 | HTML模式 | 使用场景 |
+|----------|----------|----------|
+| 可折叠推导 | `<details class="derive-steps">` | 所有推导步骤，默认折叠 |
+| 选项卡视图 | `<div class="tab-container">` | 每章快速复习/详细讲解切换 |
+| 练习测验 | `<div class="quiz-section">` | 每章末2-4道概念检查题 |
+| 术语闪卡 | `<div class="flashcard-grid">` | 每章3-5张核心术语卡 |
+| 进度追踪 | `.section-checkbox` + `.progress-bar-fill` | 侧边栏 ToC checkbox |
+| 搜索过滤 | `.search-input` | 主内容区顶部搜索栏 |
 
 ### 4.7 质量确保标准
 
@@ -772,11 +1177,12 @@ window.MathJax = {
 5. **分层解释**：每个核心概念包含 定义→配图→直觉→推导→例题→关联
 6. **图文并茂**：每章至少3张课件原图，每个核心概念至少1张示意图
 7. **SVG补充**：课件原图不足处，用SVG示意图补充
-8. **深度脚手架**：可层层深入——frontmatter→第0章→速览图标→精读章节→附录检索
-9. **多遍阅读设计**：图标标记使读者可以快扫📌或逐章精读
-10. **学生同理心**：对比表格、记忆口诀、日常比喻
-11. **考试实用主义**：关键考点标注、附录B解题模板、附录C常见错误
-12. **统一视觉语言**：一致的CSS类、标题层级、表格格式、块引用约定。
+8. **交互式学习**：每章必须有选项卡视图、可折叠推导、练习测验、术语闪卡
+9. **深度脚手架**：可层层深入——frontmatter→第0章→闪卡快览→选项卡切换→精读→测验→附录
+10. **多遍阅读设计**：快速复习选项卡→详细讲解选项卡→测验自检→进度追踪
+11. **学生同理心**：对比表格、记忆口诀、日常比喻、翻卡记忆
+12. **考试实用主义**：关键考点标注、附录B解题模板、附录C常见错误
+13. **统一视觉语言**：一致的CSS类、标题层级、表格格式、块引用约定
 
 ### 4.8 特殊场景处理
 
@@ -800,7 +1206,7 @@ window.MathJax = {
 - [ ] 所有公式使用LaTeX，关键结果 `\boxed{}`
 - [ ] 逐一核对每个公式的完整性——无断裂、符号丢失、上下标错位
 - [ ] 课件中所有被跳过的推导均已补全，每步有文字解释
-- [ ] 图标系统（📌🔑📐✏️💡）使用一致，对应的CSS类正确
+- [ ] 图标系统（📌🔑📐✏️💡📝🃏）使用一致，对应的CSS类正确
 - [ ] 每章至少3张课件原图，图片路径正确可访问
 - [ ] 核心概念（📌标记）至少配1张示意图（原图或SVG）
 - [ ] SVG示意图质量合格：配色一致、标签清晰、语义正确
@@ -813,6 +1219,15 @@ window.MathJax = {
 - [ ] MathJax CDN引用正确，HTML在浏览器中可正常渲染
 - [ ] 已运行 `embed_images.py` 将图片内嵌为 base64（如适用）
 - [ ] 移动端和打印样式均可用
+- [ ] 每章推导步骤使用 `<details class="derive-steps">` 可折叠
+- [ ] 每章有选项卡布局（⚡快速复习 + 📖详细讲解）
+- [ ] 每章快速复习面板有3-5张 flashcard 术语闪卡
+- [ ] 每章有2-4道练习题的 `.quiz-section`
+- [ ] 侧边栏 ToC 有进度追踪 checkbox + 进度条
+- [ ] 主内容区顶部有搜索栏
+- [ ] 打印时交互元素正确降级（所有内容可见，无控件）
+- [ ] JavaScript 为单内联 `<script>` 块，无外部依赖
+- [ ] 自主 agent 生成时包含 autonomous-banner（如适用）
 
 ---
 
