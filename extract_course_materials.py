@@ -428,3 +428,15 @@ if 失败:
 
 if not 空内容 and not 失败 and not 纯图片文件:
     print("所有文件提取成功！")
+
+# 检查 exam-scope.json（供自主 agent 使用）
+scope_file = os.path.join(课件目录, "exam-scope.json")
+if os.path.exists(scope_file):
+    print(f"\n📋 发现考试范围配置: {scope_file}")
+    try:
+        with open(scope_file, 'r', encoding='utf-8') as f:
+            print(f.read())
+    except Exception as e:
+        print(f"读取失败: {e}")
+else:
+    print(f"\n💡 提示: 可在课件目录中创建 exam-scope.json 预设考试范围，格式参见项目根目录的 exam-scope-template.json")
