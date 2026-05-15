@@ -18,7 +18,7 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 | 平台 | 优先级 | 配置文件 | 交互模式 |
 |------|--------|----------|----------|
 | Claude Code | P0 | CLAUDE.md | 完整交互 |
-| Codex | P0 | codex.md | 完整交互 |
+| Codex | P0 | 自定义 Prompt | 完整交互 |
 | OpenCode | P1 | AGENTS.md, opencode.json | 完整交互 |
 | OpenClaw/Hermes | P2 | AGENTS.md | 自主（有限交互） |
 
@@ -195,9 +195,13 @@ window.MathJax = {
   svg: { fontCache: 'global' }
 };
 </script>
-<!-- 如需离线使用，下载 MathJax 后将 src 改为本地路径 -->
-<!-- <script src="./mathjax/es5/tex-svg.js"></script> -->
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script id="MathJax-script" async src="./mathjax/es5/tex-svg.js"
+        onerror="
+          var cdn=document.createElement('script');
+          cdn.id='MathJax-script';cdn.async=true;
+          cdn.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
+          this.remove();document.head.appendChild(cdn);
+        "></script>
 <noscript>
   <p style="color: #c41e3a; text-align: center; padding: 1rem; border: 2px dashed #c41e3a;">
     ⚠ 此文档需要 JavaScript 才能正确渲染数学公式。请启用 JavaScript 或使用现代浏览器打开。
@@ -1216,7 +1220,7 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 - [ ] 附录C至少5条常见错误
 - [ ] 各章节标注对应课件来源
 - [ ] 目录锚点链接与章节id一一对应
-- [ ] MathJax CDN引用正确，HTML在浏览器中可正常渲染
+- [ ] MathJax local-first + CDN fallback 引用正确，HTML在浏览器中可正常渲染
 - [ ] 已运行 `embed_images.py` 将图片内嵌为 base64（如适用）
 - [ ] 移动端和打印样式均可用
 - [ ] 每章推导步骤使用 `<details class="derive-steps">` 可折叠

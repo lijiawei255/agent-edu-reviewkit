@@ -15,7 +15,7 @@
 | 平台 | 优先级 | 配置文件 | 交互模式 | 视觉能力 |
 |------|--------|----------|----------|----------|
 | Claude Code | P0 | CLAUDE.md | 完整交互 | 原生视觉 + MCP |
-| Codex | P0 | codex.md | 完整交互 | 有限 |
+| Codex | P0 | 自定义 Prompt | 完整交互 | 有限 |
 | OpenCode | P1 | AGENTS.md, opencode.json | 完整交互 | 取决于模型 |
 | OpenClaw/Hermes | P2 | AGENTS.md | 自主（有限交互） | 取决于模型 |
 

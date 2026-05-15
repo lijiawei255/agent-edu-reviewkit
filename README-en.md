@@ -1,6 +1,6 @@
 # agent-edu-reviewkit 🎓
 
-> A cross-platform AI assistant skill that converts course materials (PDF/PPTX/DOCX) into a **fully illustrated, interactive HTML exam review document** with a single command.
+> Convert course materials (PDF/PPTX/DOCX) into a **fully illustrated, interactive HTML exam review document** — no coding required, just chat with an AI.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code%20%7C%20OpenCode%20%7C%20Codex%20%7C%20OpenClaw-green)]()
@@ -12,64 +12,65 @@
 
 ## Table of Contents
 
+- [Key Terms (Quick Overview)](#key-terms-quick-overview)
+- [What You Need](#what-you-need)
+- [Quick Start (Simplest Way)](#quick-start-simplest-way)
 - [What You Get](#what-you-get)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
 - [Detailed Usage](#detailed-usage)
+- [Alternative Skill: Chapter Notes](#alternative-skill-chapter-notes)
 - [Interactive Learning Features](#interactive-learning-features)
 - [Supported Platforms](#supported-platforms)
 - [Autonomous Agent Support](#autonomous-agent-support)
+- [Privacy & Security](#privacy--security)
 - [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
 
 ---
 
-## What You Get
+## Key Terms (Quick Overview)
 
-**Input**: A folder containing courseware files (PDF/PPTX/DOCX)
+If you're new to AI coding tools, here's what some terms mean:
 
-**Output**: A single, self-contained interactive HTML file featuring:
-
-- 📋 Exam cover sheet (scope, format, instructor, textbook)
-- 📖 Layered reading guide (multiple review paths for different skill levels)
-- 📑 Clickable table of contents with **progress tracking**
-- 🔍 Full-text search and filter
-- 🗺️ Core concept mind map (inline SVG)
-- 📌 Key concept deep dives (bilingual terminology, complete derivations)
-- 🔑 Critical theorems and relationships
-- 📐 **Collapsible derivation steps** (click to expand, save space)
-- ⚡📖 **Tabbed views** (Quick Review / Detailed Explanation switch)
-- 🃏 **Flashcard flip cards** (click to flip — term on front, definition on back)
-- 📝 **Practice quizzes** (concept checks with reveal-able answers)
-- ✏️ Worked examples (solution immediately follows each problem)
-- 💡 Intuitive explanations (everyday analogies and mnemonics)
-- 🖼️ Original courseware images + inline SVG diagrams
-- 📋 Appendix A: Formula quick-reference cards
-- 📋 Appendix B: Problem-solving templates
-- 📋 Appendix C: Common mistakes and pitfalls
-- 🖨️ Print-optimized stylesheet (all interactive content auto-expands)
+| Term | Plain-English Explanation |
+|------|--------------------------|
+| **AI Assistant / AI Coding Assistant** | A program you chat with that can run code and generate files (e.g., Claude Code, ChatGPT, GitHub Copilot) |
+| **Skill** | A set of pre-written instructions telling the AI "what to do for a specific task." This project's skill is "turn courseware into a review document" |
+| **HTML** | A web page file. Double-click an `.html` file to open it in your browser, with text, images, formulas, and animations |
+| **Python** | A programming language. You need it to run helper scripts (very simple steps, see below) |
+| **Terminal / Command Line** | A text window where you type a few commands (like `pip install`). Just copy and paste — no programming knowledge needed |
+| **pip** | Python's "app store" for installing tools |
+| **git clone** | Downloading a project from GitHub. If you don't use git, just download the ZIP from the webpage |
+| **CDN** | A public file hosting service on the internet. The generated doc loads a math rendering engine from CDN (can also work offline, see FAQ) |
+| **LaTeX** | Standard notation for math formulas. E.g., `$E = mc^2$` gets rendered as a beautifully typeset equation |
 
 ---
 
-## Prerequisites
+## What You Need
 
-### 1. Install an AI Coding Assistant
+Before starting, make sure you have:
 
-Choose and install any of the following:
+### Required
 
-| Assistant | Installation | Interaction Mode |
-|-----------|-------------|-----------------|
-| **Claude Code** | [Official setup guide](https://docs.anthropic.com/en/docs/claude-code) | Full interactive |
-| **OpenCode** | `npm install -g opencode-ai` | Full interactive |
-| **OpenAI Codex CLI** | `npm install -g @openai/codex` | Full interactive |
-| **GitHub Copilot** | [VS Code extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) | Full interactive |
-| **Kimi Code** | [Official documentation](https://kimi.moonshot.cn/) | Full interactive |
-| **OpenClaw/Hermes** | [Installation docs](https://docs.openclaw.ai/) | Autonomous |
+| Item | Notes |
+|------|-------|
+| **Computer** | Windows, macOS, or Linux |
+| **Python 3.9+** | To run extraction scripts. Installation guide below |
+| **Course materials** | PDF (`.pdf`), PowerPoint (`.pptx`, `.pptm`), Word (`.docx`, `.dotx`, `.dotm`) |
+| **An AI assistant** | See "Choose an AI Assistant" below |
+| **Internet connection** | For downloading dependencies and chatting with AI. Formula rendering also needs internet (or pre-download MathJax for offline use — see FAQ) |
+| **~50 MB disk space** | For extracted text, images, and the final HTML file |
 
-### 2. Install Python (3.9 or later)
+### Optional
 
-- **Windows**: Download from [python.org](https://www.python.org/downloads/), check "Add Python to PATH" during installation
+| Item | Notes |
+|------|-------|
+| **Git** | For cloning the project. If you don't use git, just download as ZIP from GitHub |
+| **Node.js** | Only needed for OpenCode or Codex CLI. Not needed for Claude Code, web-based AI, or other assistants |
+
+### Install Python
+
+- **Windows**: Download from [python.org](https://www.python.org/downloads/) — **check** "Add Python to PATH" during installation
 - **macOS**: `brew install python@3`
 - **Linux (Ubuntu/Debian)**: `sudo apt install python3 python3-pip`
 - **Linux (Fedora)**: `sudo dnf install python3 python3-pip`
@@ -81,28 +82,49 @@ python --version   # Should show Python 3.9+
 pip --version
 ```
 
-### 3. Install Python Dependencies
+### Choose an AI Assistant
 
-```bash
-pip install pypdf python-pptx python-docx
-```
+| Assistant | Installation | Interaction Mode | Best For |
+|-----------|-------------|-----------------|----------|
+| **Claude Code** | [Official setup guide](https://docs.anthropic.com/en/docs/claude-code) | Full interactive | Recommended. Most complete experience |
+| **OpenCode** | `npm install -g opencode-ai` | Full interactive | Open-source enthusiasts |
+| **OpenAI Codex CLI** | `npm install -g @openai/codex` | Full interactive | Existing OpenAI users |
+| **GitHub Copilot** | [VS Code extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) | Full interactive | VS Code + Copilot users |
+| **Kimi Code** | [Official docs](https://kimi.moonshot.cn/) | Full interactive | Users in China |
+| **OpenClaw/Hermes** | [Installation docs](https://docs.openclaw.ai/) | Autonomous | Fully automated workflow |
 
-All three libraries are pure Python — no C compilation required. Just `pip install` and you're ready.
+> 💡 **Don't have an AI coding assistant?** You can simply copy-paste the contents of `skills/course-review-guide.md` into any AI chat tool (ChatGPT, Kimi Chat, DeepSeek, etc.) and tell it to generate a review document. This is the simplest path — see Quick Start below.
 
 ---
 
-## Quick Start
+## Quick Start (Simplest Way)
 
-### 1. Clone the Repository
+### Step 1: Download the Project
 
+**Option A (Recommended): Download ZIP from GitHub**
+1. Go to https://github.com/lijiawei255/agent-edu-reviewkit
+2. Click the green "<> Code" button → "Download ZIP"
+3. Extract to a folder of your choice
+
+**Option B (If you use git):**
 ```bash
 git clone https://github.com/lijiawei255/agent-edu-reviewkit.git
 cd agent-edu-reviewkit
 ```
 
-### 2. Prepare Your Course Materials
+### Step 2: Install Python Dependencies
 
-Place your courseware files (`.pdf`, `.pptx`, `.docx`, and variants) into a folder:
+Open a terminal (PowerShell or Command Prompt on Windows), navigate to the project folder, and run:
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs all required Python packages (`pypdf`, `python-pptx`, `python-docx`) — pure Python, no extra tools needed.
+
+### Step 3: Prepare Your Course Materials
+
+Place your courseware files in a folder:
 
 ```
 ./my-courseware/
@@ -112,66 +134,85 @@ Place your courseware files (`.pdf`, `.pptx`, `.docx`, and variants) into a fold
     └── ...
 ```
 
-### 3. Invoke the Skill
+### Step 4: Tell Your AI Assistant What to Do
 
-**Claude Code users**:
+**🌐 Universal approach (works with all AI platforms — simplest):**
 
-Simply say:
+Open your AI assistant (Claude Code, ChatGPT, Kimi Chat, etc.) and say:
+
+> Follow the instructions in skills/course-review-guide.md and help me convert the course materials in [path/to/courseware] into an HTML exam review document.
+
+If you're using a chat-style AI (not a coding assistant), paste the contents of `skills/course-review-guide.md` into the conversation first.
+
+**🤖 Claude Code users (recommended):**
+
+Start Claude Code inside the project directory and say:
 
 ```
 Please help me create an exam review document from my course materials
 ```
 
-Claude Code will automatically detect and load the skill from `skills/course-review-guide.md`. You can also trigger it explicitly:
+Claude Code auto-detects the skill. Or trigger explicitly: `/skill:course-review-guide`
+
+**🔧 OpenCode users:**
 
 ```
-/skill:course-review-guide
-```
-
-> Make sure to start Claude Code inside the project directory, or point it to the `skills/` directory.
-
-**OpenCode users**:
-
-The project includes an `opencode.json` config with a `course-review` custom agent. After starting OpenCode:
-
-```
-# Connect to your model provider, then:
 @course-review Help me generate a review document, courseware is in [directory path]
 ```
 
-> See `AGENTS.md` in the project root for platform-specific adaptations.
-
-**Other AI assistant users**:
-
-Load the contents of `skills/course-review-guide.md` as a system prompt or custom instruction.
-
-**Universal approach (works on all platforms)**:
-
-Send the following to your AI assistant:
-
-```
-Follow the instructions in skills/course-review-guide.md and help me
-convert the course materials in [path/to/courseware] into an HTML exam review document.
-```
-
-### 4. Follow the Prompts
+### Step 5: Follow the AI's Prompts
 
 The AI will guide you through:
-1. Confirming the courseware directory and exam scope
-2. Running the extraction script (`extract_course_materials.py`)
+1. Confirming the exam scope (which chapters are included)
+2. Running the extraction script (the AI will tell you the exact command)
 3. Generating the interactive HTML review document
-4. Running `embed_images.py` to get a self-contained HTML
-5. (Optional) Generating an exam prediction document
+4. Running `python embed_images.py <filename>.html` to inline all images
+5. (Optional) Running `python setup_mathjax.py` to download the math engine for offline formula viewing
+6. (Optional) Generating an exam prediction document
 
-The output is a single, self-contained `.html` file — open it in any browser to read or print.
+The output is a single `.html` file — double-click to open in your browser and start studying.
+
+---
+
+## What You Get
+
+**Input**: A folder of courseware files (PDF/PPTX/DOCX)
+
+**Output**: A single, self-contained interactive HTML file featuring:
+
+- 📋 Exam cover sheet (course name, scope, format, instructor, textbook)
+- 📖 Layered reading guide (multiple review paths for different skill levels)
+- 📑 Clickable table of contents with progress tracking bar
+- 🔍 Full-text search
+- 🗺️ Core concept mind map (inline SVG)
+- 📌 Key concept deep dives (bilingual terminology, complete derivations)
+- 🔑 Critical theorems and relationships
+- 📐 **Collapsible derivation steps** (click to expand, save screen space)
+- ⚡📖 **Tabbed views** (Quick Review / Detailed Explanation toggle)
+- 🃏 **Flashcard flip cards** (click to flip — term on front, definition on back)
+- 📝 **Practice quizzes** (concept checks with revealable answers)
+- ✏️ Worked examples (solution immediately follows problem)
+- 💡 Intuitive explanations (everyday analogies and mnemonics)
+- 🖼️ Original courseware images + inline SVG diagrams
+- 📋 Appendix A: Formula quick-reference cards (by chapter)
+- 📋 Appendix B: Problem-solving templates (step-by-step)
+- 📋 Appendix C: Common mistakes and pitfalls (confusable concepts)
+- 🖨️ Print-optimized stylesheet (all interactive content auto-expands)
+
+### Screenshots
+
+> Put your courseware in a folder and follow the AI's prompts for similar results.
+> See the test courseware (DSP / Digital Signal Processing, 24 PDFs) in the project for an example of generated output.
+>
+> 📸 Screenshots welcome — submit yours to Issues!
 
 ---
 
 ## Detailed Usage
 
-### Workflow
+### Workflow Overview
 
-The process has six phases:
+The process has six phases, guided step-by-step by the AI:
 
 ```
 Course files ──→ Phase 1: Scope ──→ Phase 2: Extraction ──→ Phase 3: Research
@@ -191,65 +232,80 @@ The AI scans your courseware directory, lists all files, and confirms:
 - Exam format (closed-book / open-book)
 - Output filename
 
-**Tip**: Prepare an exam scope list or syllabus file in advance.
+**Tip**: Prepare an exam scope list or syllabus in advance for better accuracy.
 
 ### Phase 2: Content Extraction
 
-The AI guides you to run `extract_course_materials.py`:
+The AI guides you to run `extract_course_materials.py`. **Use command-line arguments** (no code editing needed):
 
 ```bash
-# 1. Edit the config section (lines 49-53) to set your actual paths
-# 2. Run the script
-python extract_course_materials.py
+# Basic usage: specify courseware and output directories
+python extract_course_materials.py --course-dir "path/to/courseware" --output-dir "output_dir"
+
+# Common full command:
+python extract_course_materials.py \
+    --course-dir "./my-courseware" \
+    --text-output-dir "extracted_text" \
+    --image-output-dir "extracted_images"
 ```
+
+**Optional --render-pages flag**: If your AI model supports vision (multimodal models like Claude Opus 4, GPT-4V), **highly recommended**:
+
+```bash
+# Install pymupdf first: pip install pymupdf
+python extract_course_materials.py --course-dir "./my-courseware" --render-pages
+```
+
+This renders PDF pages as full-page screenshots, allowing the AI to see the complete layout (formulas, charts, diagrams in context) — **significantly improves output quality**. Essential for scan-based PDFs (pure-image courseware).
 
 The script automatically:
 - Extracts text and images from all courseware files
-- Detects pure-image files (scan-based PDFs) and flags them separately
-- Inserts `[IMAGE: xxx.png]` markers in extracted text
+- Detects pure-image files (scan-based PDFs) and flags them
+- Inserts `[IMAGE: xxx.png]` markers in extracted text at image positions
 - Produces a detailed extraction report
-- Detects `exam-scope.json` (if present) and outputs scope configuration
 
 ### Phase 3: Supplementary Research (Optional)
 
-The AI searches for supplementary context from:
+The AI may search for supplementary context from:
 - GitHub (open course notes, problem solutions)
 - Wikipedia (authoritative concept definitions)
-- Academic tutorials
 
-**All external content is used for reference only** — your course materials remain the primary source.
+**All external content is for reference only** — your course materials remain the primary source.
 
 ### Phase 4: HTML Generation
 
-The AI produces a single-file **interactive** HTML document with:
-- **MathJax** rendering for all mathematical formulas (LaTeX)
-- **Inline SVG** diagrams (flowcharts, block diagrams, comparison charts, plots)
+The AI generates an **interactive** HTML document with:
+- **MathJax** rendering for formulas (LaTeX)
+- **Inline SVG** diagrams (flowcharts, comparison charts, plots)
 - **Original courseware images** (relative paths during generation, then base64-embedded via `embed_images.py`)
-- **CSS styles** (responsive design + print queries + sticky sidebar ToC on wide screens)
+- **Responsive CSS** (works on desktop, tablet, mobile + print styles + sticky sidebar on wide screens)
 - **Interactive components** (collapsible derivations, tabbed views, flashcards, quizzes, progress tracker, search)
-- **Inline JavaScript** (no external dependencies, fully self-contained)
+- **Inline JavaScript** (zero external JS libraries, fully self-contained)
 
-After generation, run `python embed_images.py <filename>.html` to inline all images, producing a fully self-contained HTML file.
+After generation, make the HTML fully self-contained:
+
+```bash
+python embed_images.py <filename>.html   # Inline all images as base64
+python setup_mathjax.py                  # (One-time) Download MathJax locally for offline formulas
+```
 
 ### Phase 5: Quality Assurance
 
-The AI runs a 25-item checklist to verify completeness and correctness, covering structure, interactivity, math rendering, and print compatibility.
+The AI runs a 25-item checklist covering structure completeness, interactivity, math rendering, and print compatibility.
 
 ### Phase 6: Exam Prediction (Optional)
 
-After finishing the review document, the AI can generate an **exam prediction document** based on course content analysis — including high-frequency topic predictions, chapter exercises, a mock exam paper with solutions, helping students target weak areas before the exam.
+After finishing the review document, the AI can generate an **exam prediction document** — high-frequency topic predictions, chapter exercises, a mock exam with solutions.
 
 ### Image Recognition Capabilities
 
-For pure-image courseware (scanned PDFs, image-only PPTX), this skill uses a **three-level fallback chain**:
+For pure-image courseware (scanned PDFs, image-only PPTX), this skill uses a three-level fallback:
 
 | Priority | Approach | Description |
 |----------|----------|-------------|
-| 1 | Built-in model vision | Directly read image content (requires multimodal model: Claude Opus 4, GPT-4V, Gemini Pro Vision) |
-| 2 | MCP vision server | Call vision tools via MCP protocol (e.g., MiniMax MCP) |
-| 3 | User-guided resolution | Guide user to switch models, install MCP, or use local OCR (Tesseract) |
-
-If your AI assistant lacks image recognition, switch to a vision-capable model or install an MCP vision server.
+| 1 | Built-in model vision | Direct image reading (requires multimodal model) |
+| 2 | MCP vision server | External vision tools via MCP protocol |
+| 3 | User-guided resolution | Switch models, install MCP, or pre-process with OCR (Tesseract) |
 
 ### Suitable Course Types
 
@@ -260,17 +316,34 @@ This skill is designed for **STEM exam review** and excels with:
 - **Physics courses**: University Physics, Theoretical Mechanics, Quantum Mechanics
 - **Programming/CS courses**: Data Structures, Algorithm Design, Machine Learning
 
-It also works well for concept-heavy courses (biology, history, medicine), automatically adapting with more comparison tables, mnemonics, and mind maps.
+Also works well for concept-heavy courses (biology, history, medicine), automatically adapting with more comparison tables, mnemonics, and mind maps.
+
+---
+
+## Alternative Skill: Chapter Notes
+
+In addition to `course-review-guide` (exam review), this project includes the `course-notes` skill:
+
+| Skill | File | Purpose | Best For |
+|-------|------|---------|----------|
+| **course-review-guide** | `skills/course-review-guide.md` | Generate a complete exam review document | Pre-exam cramming, quick review |
+| **course-notes** | `skills/course-notes.md` | Generate chapter-by-chapter structured notes | Long-term learning, following lectures, deep understanding |
+
+Usage is the same — tell your AI assistant you want **chapter notes** instead of an exam review:
+
+> Follow the instructions in skills/course-notes.md and help me convert the course materials in [path/to/courseware] into chapter-by-chapter study notes.
+
+Both skills complement each other: use `course-notes` for daily study during the semester, then `course-review-guide` for comprehensive pre-exam review.
 
 ---
 
 ## Interactive Learning Features
 
-The generated HTML review document includes interactive learning components, inspired by recommendations from [Thariq's "Using Claude Code: The Unreasonable Effectiveness of HTML"](https://x.com/thariqk):
+The generated HTML includes interactive learning components, inspired by [Thariq's "Using Claude Code: The Unreasonable Effectiveness of HTML"](https://x.com/thariqk):
 
 ### Collapsible Derivation Steps
 
-All mathematical derivations are collapsed by default — click to expand. Saves page space and lets students reveal detail on demand. All content auto-expands when printing.
+All mathematical derivations collapsed by default — click to expand. Saves page space and lets students reveal detail on demand. Auto-expands when printing.
 
 ### Tabbed Views
 
@@ -280,37 +353,37 @@ Each chapter has two tabs:
 
 ### Flashcard Flip Cards
 
-Core terminology flip cards — front shows the term, click to flip and see the definition or formula. Uses CSS 3D transform, works with both mouse and touch.
+Core terminology flip cards — front shows the term, click to flip and see the definition or formula. CSS 3D transform, works with both mouse and touch.
 
 ### Practice Quizzes
 
-Each chapter ends with 2-4 concept check questions. Answers are hidden by default — click "Show answer" to reveal. Great for self-assessment.
+Each chapter ends with 2-4 concept check questions. Answers hidden by default — click "Show Answer" to reveal. Great for self-assessment.
 
 ### Progress Tracking
 
-The sidebar ToC includes checkboxes. Mark completed sections, and the progress bar updates in real-time. Progress is saved in browser localStorage and survives page refreshes.
+The sidebar ToC includes checkboxes. Mark completed sections and the progress bar updates in real-time. Progress is saved in browser localStorage and survives page refreshes.
 
 ### Full-text Search
 
-A search bar at the top of the content area lets you filter chapters by keyword — quickly find concepts or formulas you need.
+A search bar at the top lets you filter chapters by keyword — quickly find concepts or formulas.
 
 ### Print Compatibility
 
-When printing, all interactive elements gracefully degrade: collapsed content expands, all tab panels show, flashcards render front+back, and search/progress controls hide.
+When printing, all interactive elements gracefully degrade: collapsed content expands, all tab panels show, flashcards render front+back, search and progress controls hide.
 
 ---
 
 ## Supported Platforms
 
-| Platform | Priority | Config File | Interaction Mode |
-|----------|----------|-------------|-----------------|
-| **Claude Code** | P0 | `CLAUDE.md` | Full interactive |
+| Platform | Priority | How to Use | Interaction Mode |
+|----------|----------|------------|-----------------|
+| **Claude Code** | P0 | Built-in `CLAUDE.md` | Full interactive |
 | **OpenAI Codex CLI** | P0 | Custom Prompt | Full interactive |
-| **OpenCode** | P1 | `AGENTS.md`, `opencode.json` | Full interactive |
-| **OpenClaw/Hermes** | P2 | `AGENTS.md` | Autonomous |
-| **GitHub Copilot** | — | `.github/copilot-instructions.md` | Full interactive |
-| **Kimi Code** | — | Custom Instructions | Full interactive |
-| **Cursor** | — | `.cursor/rules/` | Full interactive |
+| **OpenCode** | P1 | `AGENTS.md` + `opencode.json` | Full interactive |
+| **OpenClaw/Hermes** | P2 | `AGENTS.md` + `exam-scope.json` | Autonomous |
+| **GitHub Copilot** | Community | Custom Prompt | Full interactive |
+| **Kimi Code** | Community | Custom Instructions | Full interactive |
+| **Cursor** | Community | Custom Rules | Full interactive |
 
 Platform-specific adaptations are documented in `AGENTS.md`.
 
@@ -318,7 +391,7 @@ Platform-specific adaptations are documented in `AGENTS.md`.
 
 ## Autonomous Agent Support
 
-OpenClaw, Hermes, and other Claw-type autonomous agents run fully automatically **without guaranteed turn-based user interaction**. This skill includes dedicated adaptations for autonomous mode.
+OpenClaw, Hermes, and other autonomous agents run fully automatically **without guaranteed turn-based interaction**. This skill includes dedicated adaptations for autonomous mode.
 
 ### exam-scope.json Configuration
 
@@ -338,7 +411,7 @@ Place an `exam-scope.json` file in your courseware directory. Autonomous agents 
 }
 ```
 
-A template is provided at `exam-scope-template.json` in the project root.
+A template is at `exam-scope-template.json` in the project root.
 
 ### Three-Level Scope Determination
 
@@ -350,9 +423,24 @@ A template is provided at `exam-scope-template.json` in the project root.
 
 ### Auto-Inference Mode
 
-If `exam-scope.json` is not found, the autonomous agent will infer the chapter scope from courseware filenames. The generated HTML will display a prominent **autonomous mode banner** at the top, reminding users to verify the exam scope. The agent also auto-generates an `exam-scope-template.json` (with inferred defaults) in the courseware directory for the user to fill in next time.
+If `exam-scope.json` is not found, the agent infers chapter scope from filenames. The generated HTML displays a prominent autonomous mode banner, reminding users to verify the scope. The agent also auto-generates an `exam-scope-template.json` (with inferred defaults) for next time.
 
 See `AGENTS.md` for detailed adaptation instructions.
+
+---
+
+## Privacy & Security
+
+When using this tool, your course materials pass through:
+
+1. **Local extraction**: `extract_course_materials.py` runs on your computer. Extracted text and images stay on your machine — **nothing is uploaded**.
+2. **AI service provider**: When you chat with an AI assistant, course content is sent to the AI provider (e.g., Anthropic, OpenAI, Moonshot). Check their privacy policies.
+3. **Web search**: The AI may access public websites (GitHub, Wikipedia) for supplementary research.
+
+**Recommendations**:
+- Remove personally identifiable information (student IDs, ID numbers) from course materials before processing
+- If materials contain unpublished research or trade secrets, verify the AI provider's data usage policy first
+- All intermediate files (`extracted_text/`, `extracted_images/`) are stored locally — you can delete them anytime
 
 ---
 
@@ -360,10 +448,10 @@ See `AGENTS.md` for detailed adaptation instructions.
 
 ### Q: My courseware is scan-based PDFs (pure images) with no text layers. What do I do?
 
-If scan quality is decent, the AI's vision capability can recognize content from images. If your current model lacks vision:
-1. Switch to a multimodal model (Claude Opus 4, GPT-4V, etc.)
-2. Install an MCP vision server
-3. Pre-process with OCR (Tesseract): `pip install pytesseract pdf2image`
+If scan quality is decent, multimodal AI models can recognize content from images. Recommendations:
+1. Use `--render-pages` with the extraction script (`pip install pymupdf` first) to render pages as clear screenshots
+2. Use a vision-capable model (Claude Opus 4, GPT-4V, etc.)
+3. If the above isn't feasible, pre-process with OCR (Tesseract): `pip install pytesseract pdf2image`
 
 ### Q: Formulas are garbled or incomplete after extraction?
 
@@ -371,20 +459,32 @@ PDF text extraction can damage formulas. This skill automatically detects and fi
 
 ### Q: The generated HTML file is too large?
 
-CSS and inline SVG add minimal weight. After running `embed_images.py` to base64-embed images, the file grows (about 1.37× total image size) but becomes fully self-contained — ideal for sharing. If the file is too large, skip embedding and bundle the HTML with the `extracted_images/` folder instead.
+CSS and inline SVG add minimal weight. After running `embed_images.py` to base64-embed images, the file grows (about 1.37× total image size) but becomes fully self-contained — ideal for sharing. If too large, skip embedding and bundle the HTML with the `extracted_images/` folder instead.
 
 ### Q: How do I share and print the review document?
 
-- **Share**: Run `python embed_images.py <filename>.html` to get a `_embedded.html` with all images inlined — one file is all you need
-- **Print**: Open the HTML in a browser and press `Ctrl+P` (or `Cmd+P`). Built-in `@media print` styles auto-expand all collapsed content and optimize the layout
+- **Share**: Run `python embed_images.py <filename>.html` to get a `_embedded.html` with all images inlined — send just this one file
+- **Print**: Open the HTML in a browser and press `Ctrl+P` (or `Cmd+P`). Built-in `@media print` styles auto-expand all collapsed content and optimize layout
 
 ### Q: Do the interactive features (flashcards, quizzes) require internet?
 
-No. All interactive features use pure HTML/CSS/JavaScript with no external JS dependencies. The only thing requiring internet is MathJax formula rendering (see offline workaround below).
+No. All interactive features use pure HTML/CSS/JavaScript with zero external JS dependencies. The only thing needing internet is formula rendering. For fully offline formula viewing, run `python setup_mathjax.py` (one-time) to download MathJax locally.
+
+### Q: How do I view formulas without internet access?
+
+**Simplest way**: Run the one-click setup script included in the project:
+
+```bash
+python setup_mathjax.py
+```
+
+This downloads MathJax 3 to the `mathjax/` directory. The generated HTML **automatically tries local MathJax first**, falling back to CDN only if the local copy is missing. Formulas render fine without internet.
+
+To share the HTML file with others: bundle the file together with the `mathjax/` folder.
 
 ### Q: Will my learning progress be lost?
 
-Progress is saved in the browser's localStorage and survives page refreshes. Note: progress is tied to the file path — moving the file to a different location will reset it.
+Progress is saved in the browser's localStorage and survives page refreshes. Note: progress is tied to the file path — moving the file resets it.
 
 ### Q: Which file formats are supported?
 
@@ -396,28 +496,22 @@ Progress is saved in the browser's localStorage and survives page refreshes. Not
 | Legacy PowerPoint | `.ppt` | ❌ Not supported — resave as `.pptx` |
 | Legacy Word | `.doc` | ❌ Not supported — resave as `.docx` |
 
-### Q: How do I view formulas without internet access?
-
-The generated HTML loads formula rendering from the MathJax CDN, which requires internet. For offline use:
-1. **Print to PDF**: Open the HTML in a browser with internet, then use "Print → Save as PDF"
-2. **Local MathJax**: Download the full MathJax package from [GitHub](https://github.com/mathjax/MathJax), extract to a `mathjax/` folder next to the HTML file, and change the MathJax `<script>` `src` to `./mathjax/es5/tex-svg.js`
-
 ### Q: My course is taught in English. Will this work?
 
-Yes. The skill supports bilingual output — key terms will appear in both English and Chinese. For English-only courses, mention this during the scope confirmation phase, and the AI will adjust accordingly.
+Yes. The skill supports bilingual output — key terms appear in both English and Chinese. For English-only courses, mention this during scope confirmation and the AI will adjust accordingly.
 
 ### Q: How do I use OpenClaw/Hermes to autonomously generate a review document?
 
 1. Create `exam-scope.json` in your courseware directory (use `exam-scope-template.json` as a template)
 2. Clone this project to a location accessible by OpenClaw
-3. The OpenClaw agent will read instructions from `AGENTS.md` and execute all phases automatically
+3. The OpenClaw agent reads instructions from `AGENTS.md` and executes all phases automatically
 4. After generation, check the autonomous mode banner at the top of the document to verify the exam scope
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Here's how to get involved:
+Contributions are welcome!
 
 ### Submitting an Issue
 
@@ -425,21 +519,20 @@ Please open an issue on [GitHub Issues](https://github.com/lijiawei255/agent-edu
 - Found a bug
 - Have a feature request
 - Want support for a new file format or AI platform
-- Have questions about usage
 
 ### Submitting a Pull Request
 
 1. **Fork** the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'feat: add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
+2. Create your branch: `git checkout -b feature/amazing-feature`
+3. Commit: `git commit -m 'feat: add amazing feature'`
+4. Push: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
 **Pre-commit checklist**:
 - [ ] Changes follow existing code style
 - [ ] `extract_course_materials.py` tested on Python 3.9+
 - [ ] New features are documented
-- [ ] No test courseware or output files included (these are excluded via `.gitignore`)
+- [ ] No test courseware or output files included (excluded via `.gitignore`)
 
 ### Local Development
 
@@ -449,7 +542,7 @@ git clone https://github.com/lijiawei255/agent-edu-reviewkit.git
 cd agent-edu-reviewkit
 
 # Install dependencies
-pip install pypdf python-pptx python-docx
+pip install -r requirements.txt
 
 # Test courseware and output directories are auto-excluded by .gitignore
 # Place test materials in 测试课件(不提交)/ directory
