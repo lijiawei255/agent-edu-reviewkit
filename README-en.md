@@ -567,4 +567,4 @@ pip install -r requirements.txt
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-Copyright (c) 2026 Jiawei Li
+Copyright (c) 2026 Li Jiawei, Peng Chen, Cai Haoxuan

@@ -566,4 +566,4 @@ pip install -r requirements.txt
 
 本项目基于 MIT 许可证发布。详见 [LICENSE](LICENSE) 文件。
 
-Copyright (c) 2026 Jiawei Li
+Copyright (c) 2026 Li Jiawei, Peng Chen, Cai Haoxuan
