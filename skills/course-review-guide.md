@@ -153,7 +153,20 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 2. **浏览图片目录** `extracted_images/`，了解可用的图表资源
 3. 对于内容较长的课件（>2000行），分段读取确保不遗漏
 
-### 2.4 处理纯图片课件（扫描版PDF/图片型PPTX）
+### 2.4 图片-文本关联分析（🔴 必须执行）
+
+读取提取的文本后，执行以下分析：
+
+1. **定位图片标记**：用正则 `\[图片:\s*([^\]]+)\]` 找到所有图片标记
+2. **提取上下文**：对每张图片，提取其**前后各3段文字**作为上下文
+3. **确定图片用途**：根据上下文判断图片类型：
+   - 公式图：上下文有数学符号、推导过程 → 嵌入到对应公式位置
+   - 示意图：上下文有"如图所示"、"下图展示了" → 嵌入到该概念讲解处
+   - 结果图：上下文有实验结果、波形图、频谱图 → 嵌入到例题或结果展示
+   - 框图：上下文有系统结构、流程描述 → 嵌入到系统概述部分
+4. **图片评分**：根据上下文重要性给图片打分，优先嵌入高分图片
+
+### 2.5 处理纯图片课件（扫描版PDF/图片型PPTX）
 
 若脚本报告有纯图片文件，按以下 **降级策略** 处理：
 
@@ -820,14 +833,16 @@ window.MathJax = {
 </div> -->
 
 <!-- ===== 📖 阅读指南 ===== -->
-<h2 id="reading-guide">📖 阅读指南</h2>
-<blockquote>
-  <strong>如果你基础薄弱，请按以下路径复习：</strong><br>
-  1. 先快速浏览所有带 📌 标记的核心概念，无需深究细节<br>
-  2. 重点理解 🔑 标记的关键关系和 📐 标记的完整推导<br>
-  3. 动手做 ✏️ 标记的例题，做完再看解答<br>
-  4. 最后用附录快速查漏补缺
-</blockquote>
+<div class="reading-guide-section">
+  <h2 id="reading-guide">📖 阅读指南</h2>
+  <blockquote>
+    <strong>如果你基础薄弱，请按以下路径复习：</strong><br>
+    1. 先快速浏览所有带 📌 标记的核心概念，无需深究细节<br>
+    2. 重点理解 🔑 标记的关键关系和 📐 标记的完整推导<br>
+    3. 动手做 ✏️ 标记的例题，做完再看解答<br>
+    4. 最后用附录快速查漏补缺
+  </blockquote>
+</div>
 
 <!-- ===== 📑 目录（窄屏内联）===== -->
 <div class="toc-inline">
@@ -880,7 +895,7 @@ window.MathJax = {
 
     <!-- 术语闪卡 -->
     <div class="flashcard-grid">
-      <div class="flashcard" onclick="this.classList.toggle('flipped')">
+      <div class="flashcard">
         <div class="flashcard-inner">
           <div class="flashcard-front">[术语/概念名]</div>
           <div class="flashcard-back">[一句话定义或核心公式]</div>
@@ -903,7 +918,7 @@ window.MathJax = {
 <h3 id="chN-M">📌 [概念中文名] ([English Term])</h3>
 
 <div class="callout callout-def">
-  <p>[精确的1-2句数学定义]</p>
+  <p><strong>1. 定义</strong>：[精确的数学定义，用通俗语言复述至少2遍]</p>
   <p>$$[核心公式，置于 \boxed{} 中]$$</p>
 </div>
 
@@ -912,22 +927,43 @@ window.MathJax = {
   <figcaption>图 N.M：[说明该图表达的概念]（来源：[课件文件名]）</figcaption>
 </figure>
 
-<p><strong>意义</strong>: [这个概念在课程体系中的位置，解决什么问题]</p>
+<p><strong>2. 物理意义</strong>：[这个概念到底描述了什么物理现象？用生活中的类比解释]
+<br><em>例如："频域就像把一首曲子拆成不同频率的音符，高频是高音，低频是低音"</em></p>
 
-<blockquote><strong>直观理解</strong>：[用日常比喻或通俗语言解释这个概念]</blockquote>
+<p><strong>3. 数学表达拆解</strong>：
+<br>公式中每个符号的含义（第一次出现时必须说明）：
+<br>• $x$：[含义]，单位：[单位]，取值范围：[范围]
+<br>• $y$：[含义]，单位：[单位]，取值范围：[范围]
+<br>• ...</p>
+
+<p><strong>4. 适用条件与限制</strong>：
+<br>✅ 什么时候可以用：[列出3-5个适用场景]
+<br>❌ 什么时候不能用：[列出2-3个常见误用场景]
+<br>⚠️ 使用时必须注意：[列出2-3个关键注意事项]</p>
+
+<p><strong>5. 与其他概念的关联</strong>：
+<br>• 前置知识：需要先理解什么概念才能学这个 → 见 <a href="#chX-Y">第X章 Y节</a>
+<br>• 后续延伸：学完这个后可以学什么概念 → 见 <a href="#chZ-W">第Z章 W节</a>
+<br>• 易混淆概念：容易和什么概念搞混，区别是什么</p>
 
 <!-- 可折叠推导步骤 -->
 <details class="derive-steps">
-  <summary>📐 推导：[定理/公式名]的完整推导</summary>
+  <summary>📐 推导：[定理/公式名]的完整推导（共N步）</summary>
   <div class="derive-content">
-    <p>从 [起点公式/定义] 出发：</p>
-    <p><strong>第1步</strong>：[操作描述——做了什么 + 为什么这样做]</p>
-    <p>$$[中间表达式1]$$</p>
-    <p><strong>第2步</strong>：[操作描述]</p>
-    <p>$$[中间表达式2]$$</p>
+    <p><strong>推导目标</strong>：我们要从什么推导出什么，最终要证明什么</p>
+    <p><strong>推导前提</strong>：需要用到的前置公式、假设条件</p>
+    <hr>
+    <p><strong>第1步</strong>：[做了什么操作]
+    <br><em>为什么这一步？</em> [解释为什么要做这一步，基于什么原理，这一步的目的是什么]
+    <br>$$[完整的中间表达式，不要跳步]$$</p>
+    <p><strong>第2步</strong>：[做了什么操作]
+    <br><em>为什么这一步？</em> [解释]
+    <br>$$[完整的中间表达式]$$</p>
     <p>……</p>
-    <p><strong>最终结果</strong>：</p>
+    <p><strong>第N步：得到最终结果</strong></p>
     <p>$$\boxed{[最终公式]}$$</p>
+    <hr>
+    <p><strong>推导要点总结</strong>：推导中最关键的技巧是什么？哪一步最容易出错？</p>
   </div>
 </details>
 
@@ -936,21 +972,26 @@ window.MathJax = {
   <!-- 推导步骤的可视化SVG —— 由你生成 -->
 </div>
 
-<p><strong>推导要点</strong>：总结推导中最关键的技巧或最容易出错的地方。</p>
-
 <div class="callout callout-example">
-  <p>✏️ <strong>例题</strong>：[题目描述]</p>
+  <p>✏️ <strong>例题</strong>：[完整题目描述，包含已知条件、所求问题]</p>
+  <p><strong>📌 考点分析</strong>：本题考察的核心知识点、使用的公式、解题思路</p>
+  <p><strong>💡 解题策略选择</strong>：为什么选择这种方法，而不是其他方法？</p>
   <p><strong>解</strong>：</p>
-  <p><strong>步骤1</strong>：[操作]</p>
-  <p>$$[表达式]$$</p>
-  <p><strong>步骤2</strong>：[操作]</p>
-  <p>$$[表达式]$$</p>
+  <p><strong>步骤1：[明确的步骤名称]</strong></p>
+  <p><em>为什么这一步？</em> [解释为什么要做这一步，基于什么原理]</p>
+  <p>$$[完整的中间计算过程，不要跳跃]$$</p>
+  <p><strong>步骤2：[明确的步骤名称]</strong></p>
+  <p><em>为什么这一步？</em> [解释]</p>
+  <p>$$[完整的中间计算过程]$$</p>
   <p>……</p>
+  <p><strong>最终结果</strong>：</p>
   <p>$$\boxed{[最终答案]}$$</p>
-  <p><strong>易错点</strong>：[这道题最容易出错的地方]</p>
+  <p><strong>✅ 验证方法</strong>：如何验证答案是否正确（代入、量纲检查等）</p>
+  <p><strong>⚠️ 易错点</strong>：[详细列出至少2-3个学生常犯的错误，以及如何避免]</p>
+  <p><strong>💡 拓展思考</strong>：如果条件变化，应该如何调整解法</p>
 </div>
 
-<p><strong>关联</strong>：[指向相关概念] → 见 <a href="#chX-Y">第X章 N.X节</a></p>
+<p><strong>🔴 综合性计算大题</strong>：每章至少1道综合性计算大题，包含题目背景、已知条件、多步计算、中间结果验证、最终答案。</p>
 
   </div><!-- .tab-panel 详细讲解 -->
 </div><!-- .tab-container -->
@@ -1080,17 +1121,17 @@ document.querySelectorAll('.flashcard').forEach(function(card) {
 (function() {
   var input = document.querySelector('.search-input');
   if (!input) return;
-  var mainContent = document.querySelector('.main-content');
   input.addEventListener('input', function() {
     var query = this.value.trim().toLowerCase();
-    var cards = mainContent.querySelectorAll('.chapter-card');
+    // 搜索所有可搜索的内容块（包括阅读指南、目录、各章节、附录）
+    var searchTargets = document.querySelectorAll('.chapter-card, .reading-guide-section, .toc-inline, .hero');
     if (!query) {
-      cards.forEach(function(c) { c.style.display = ''; });
+      searchTargets.forEach(function(el) { el.style.display = ''; });
       return;
     }
-    cards.forEach(function(card) {
-      var txt = card.textContent.toLowerCase();
-      card.style.display = txt.includes(query) ? '' : 'none';
+    searchTargets.forEach(function(el) {
+      var txt = el.textContent.toLowerCase();
+      el.style.display = txt.includes(query) ? '' : 'none';
     });
   });
 })();
@@ -1124,18 +1165,35 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 
 **图片格式说明**：提取脚本会自动过滤浏览器不兼容的图片格式（EMF/WMF），仅保留 PNG、JPG、GIF、BMP、WebP 等 Web 兼容格式。如果提取文本中出现 `[图片: xxx.emf]` 标记但对应文件不存在，说明该图片已被自动跳过——此时可考虑用 SVG 示意图替代。
 
-**必须引用的图片类型**：
-- 核心概念示意图（系统框图、信号流程图、物理模型图）
-- 关键公式的图解推导（几何解释、坐标变换示意图）
-- 对比图（正确vs错误、变换前vs后）
-- 解题流程图（算法步骤图、决策树）
+**🔴 图片嵌入规范（每章至少嵌入5张图片）**
+
+**图片选择原则**（按优先级）：
+1. 核心概念的示意图（系统框图、信号流程图、物理模型图）
+2. 关键公式的图解推导（几何解释、坐标变换示意图）
+3. 对比图（正确vs错误、变换前vs后）
+4. 解题流程图（算法步骤图、决策树）
+5. 例题中的配图（题目原图、结果展示图）
+
+**图片嵌入方法**：
+1. 在对应概念的讲解位置，用 `<figure>` 包裹图片
+2. `<figcaption>` 必须包含：图号+图片说明+来源（课件文件名）
+3. **图片说明要结合上下文内容**，而非仅描述图片本身
+
+**上下文结合示例**：
+如果图片标记出现在"傅里叶变换的时域-频域对应关系"段落之后：
+```html
+<figure>
+  <img src="extracted_images/chapter3_p10_img2.png" alt="傅里叶变换时域频域对应关系">
+  <figcaption>图3.2：矩形脉冲的频谱展示了时域压缩对应频域扩展的特性
+  （来源：chapter3_频域分析.pdf 第10页）</figcaption>
+</figure>
+<p>如上图所示，当矩形脉冲的宽度从 2τ 缩小到 τ 时...</p>
+```
 
 **不引用的图片类型**：
 - 纯装饰性图片
 - 与文字完全重复的简单公式截图
 - 分辨率过低无法辨认的图片
-
-**每章至少引用3张课件原图，每个核心概念至少配1张示意图。**
 
 **图片内嵌（后处理）**：HTML生成完成后，运行 `python embed_images.py <文件名>.html` 将相对路径图片转换为 base64 data URI，生成完全自包含的 HTML 文件，方便分享和打印。
 
@@ -1221,23 +1279,26 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 | 进度追踪 | `.section-checkbox` + `.progress-bar-fill` | 侧边栏 ToC checkbox |
 | 搜索过滤 | `.search-input` | 主内容区顶部搜索栏 |
 
-### 4.7 质量确保标准
+### 4.7 质量确保标准（🔴 零基础友好标准）
 
 生成文档时逐条自检：
 
 1. **双语精确性**：所有关键技术术语同时给出中文和英文
 2. **数学排版**：所有公式使用LaTeX，重要结果 `\boxed{}`
 3. **公式完整性**：每个提取出的公式逐一检查，无断裂、无符号丢失
-4. **推导补全**：所有被跳过的推导步骤已补全，每步有文字解释
-5. **分层解释**：每个核心概念包含 定义→配图→直觉→推导→例题→关联
-6. **图文并茂**：每章至少3张课件原图，每个核心概念至少1张示意图
-7. **SVG补充**：课件原图不足处，用SVG示意图补充
-8. **交互式学习**：每章必须有选项卡视图、可折叠推导、练习测验、术语闪卡
-9. **深度脚手架**：可层层深入——frontmatter→第0章→闪卡快览→选项卡切换→精读→测验→附录
-10. **多遍阅读设计**：快速复习选项卡→详细讲解选项卡→测验自检→进度追踪
-11. **学生同理心**：对比表格、记忆口诀、日常比喻、翻卡记忆
-12. **考试实用主义**：关键考点标注、附录B解题模板、附录C常见错误
-13. **统一视觉语言**：一致的CSS类、标题层级、表格格式、块引用约定
+4. **🔴 5层概念讲解**：每个核心概念必须包含：定义→配图→物理意义→数学拆解→适用条件
+5. **🔴 推导详细度**：所有被跳过的推导步骤已补全，每步有"为什么"的解释，至少5步
+6. **🔴 数学符号说明**：所有数学符号第一次出现时必须说明含义和单位
+7. **分层解释**：每个核心概念包含 定义→配图→物理意义→数学拆解→适用条件→推导→例题→关联
+8. **🔴 图文并茂**：每章至少5张课件原图（原上下文结合），每个核心概念至少1张示意图
+9. **SVG补充**：课件原图不足处，用SVG示意图补充
+10. **🔴 大题要求**：每章至少1道综合性计算大题，包含考点分析、解题策略、详细步骤、验证方法、易错点
+11. **交互式学习**：每章必须有选项卡视图、可折叠推导、练习测验、术语闪卡
+12. **深度脚手架**：可层层深入——frontmatter→第0章→闪卡快览→选项卡切换→精读→测验→附录
+13. **多遍阅读设计**：快速复习选项卡→详细讲解选项卡→测验自检→进度追踪
+14. **学生同理心**：对比表格、记忆口诀、日常比喻、翻卡记忆
+15. **考试实用主义**：关键考点标注、附录B解题模板、附录C常见错误
+16. **统一视觉语言**：一致的CSS类、标题层级、表格格式、块引用约定
 
 ### 4.8 特殊场景处理
 
@@ -1274,15 +1335,20 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 - [ ] MathJax local-first + CDN fallback 引用正确，HTML在浏览器中可正常渲染
 - [ ] 已运行 `embed_images.py` 将图片内嵌为 base64（如适用）
 - [ ] 移动端和打印样式均可用
-- [ ] 每章推导步骤使用 `<details class="derive-steps">` 可折叠
+- [ ] 每章推导步骤使用 `<details class="derive-steps">` 可折叠，每步有"为什么"解释
 - [ ] 每章有选项卡布局（⚡快速复习 + 📖详细讲解）
-- [ ] 每章快速复习面板有3-5张 flashcard 术语闪卡
+- [ ] 每章快速复习面板有3-5张 flashcard 术语闪卡（JavaScript事件绑定正常）
 - [ ] 每章有2-4道练习题的 `.quiz-section`
 - [ ] 侧边栏 ToC 有进度追踪 checkbox + 进度条
-- [ ] 主内容区顶部有搜索栏
+- [ ] 主内容区顶部有搜索栏，可搜索所有内容块（阅读指南、目录、章节、附录）
 - [ ] 打印时交互元素正确降级（所有内容可见，无控件）
 - [ ] JavaScript 为单内联 `<script>` 块，无外部依赖
 - [ ] 自主 agent 生成时包含 autonomous-banner（如适用）
+- [ ] 🔴 每个核心概念包含5层讲解：定义→配图→物理意义→数学拆解→适用条件
+- [ ] 🔴 每个数学符号第一次出现时说明含义和单位
+- [ ] 🔴 每章至少5张课件原图，图片说明结合上下文内容
+- [ ] 🔴 每章至少1道综合性计算大题，包含考点分析、解题策略、验证方法、易错点
+- [ ] 🔴 所有公式说明适用条件和限制，列出常见误用场景
 
 ---
 

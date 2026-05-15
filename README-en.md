@@ -178,22 +178,35 @@ The output is a single `.html` file — double-click to open in your browser and
 
 **Input**: A folder of courseware files (PDF/PPTX/DOCX)
 
-**Output**: A single, self-contained interactive HTML file featuring:
+**Output**: A single, self-contained interactive HTML file, **designed for students with weak foundations**, featuring:
 
+### 📚 Enhanced Content Depth (Beginner-Friendly)
+- 🔴 **5-Layer Concept Explanation**: Each core concept includes Definition → Diagram → Physical Meaning → Math Breakdown → Applicability Conditions
+- 🔴 **Ultra-Detailed Derivations**: Each derivation has at least 5 steps, with "why this step" explanations — no skipped steps!
+- 🔴 **Symbol Annotations**: Every mathematical symbol includes meaning, unit, and value range on first appearance
+- 🔴 **Comprehensive Computational Problems**: At least one major problem per chapter, including exam point analysis, strategy selection, detailed steps, verification methods, and common error warnings
+- 🔴 **Applicability & Limitations**: Every formula clearly lists when it works and common misapplication scenarios
+
+### 🖼️ Smart Image Embedding (Context-Aware)
+- 🔴 **At least 5 original courseware images per chapter**, automatically placed at optimal positions based on surrounding text context
+- Smart image classification: formula diagrams, conceptual illustrations, result charts, system block diagrams — embedded at relevant explanation positions
+- Image captions integrated with surrounding text content, not just describing the image itself
+- Image source attribution (courseware filename + page number)
+
+### 🎮 Interactive Learning Features
 - 📋 Exam cover sheet (course name, scope, format, instructor, textbook)
 - 📖 Layered reading guide (multiple review paths for different skill levels)
 - 📑 Clickable table of contents with progress tracking bar
-- 🔍 Full-text search
+- 🔍 **Full-text search** (searches reading guide, table of contents, all chapters, and appendices)
 - 🗺️ Core concept mind map (inline SVG)
 - 📌 Key concept deep dives (bilingual terminology, complete derivations)
 - 🔑 Critical theorems and relationships
 - 📐 **Collapsible derivation steps** (click to expand, save screen space)
 - ⚡📖 **Tabbed views** (Quick Review / Detailed Explanation toggle)
-- 🃏 **Flashcard flip cards** (click to flip — term on front, definition on back)
+- 🃏 **Flashcard flip cards** (click to flip — term on front, definition on back, JavaScript event binding)
 - 📝 **Practice quizzes** (concept checks with revealable answers)
-- ✏️ Worked examples (solution immediately follows problem)
+- ✏️ Worked examples (solution immediately follows problem, with verification and common pitfalls)
 - 💡 Intuitive explanations (everyday analogies and mnemonics)
-- 🖼️ Original courseware images + inline SVG diagrams
 - 📋 Appendix A: Formula quick-reference cards (by chapter)
 - 📋 Appendix B: Problem-solving templates (step-by-step)
 - 📋 Appendix C: Common mistakes and pitfalls (confusable concepts)
