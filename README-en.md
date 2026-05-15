@@ -1,12 +1,41 @@
-# agent-edu-reviewkit 🎓
+# agent-edu-reviewkit 🎓 STEM Exam Review Generator
 
-> Convert course materials (PDF/PPTX/DOCX) into a **fully illustrated, interactive HTML exam review document** — no coding required, just chat with an AI.
+> ✨ **Cross-platform Agent skill that automatically converts STEM course materials (PDF/PPTX/DOCX) into single-file, self-contained interactive HTML review guides + exam predictions.**
+> Supports math, physics, circuits, computer science, mechanical engineering, signal processing, and all STEM subjects — no coding required, just chat with AI.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code%20%7C%20OpenCode%20%7C%20Codex%20%7C%20OpenClaw-green)]()
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)]()
 
 [中文版本](README.md)
+
+---
+
+## 🌟 Core Features
+
+| Feature | Description |
+|---------|-------------|
+| ✅ **All STEM Subjects Supported** | Math, physics, circuits, CS, mechanical engineering, signal processing, and more |
+| ✅ **Smart SVG Visualization** | Auto-generated function plots, circuit diagrams, data structure graphs, physics models — 5+ per chapter |
+| ✅ **Multi-Platform Compatible** | Works with Claude Code, OpenCode, OpenClaw, Hermes, Kimi Code, Copilot |
+| ✅ **Single Self-Contained File** | All CSS/JS/images/MathJax inline — zero dependencies, just double-click and use |
+| ✅ **Interactive Learning** | Flashcards, search, collapsible derivations, progress tracking, quizzes, tabbed views |
+| ✅ **Print-Friendly** | Optimized print styles for paper-based studying |
+| ✅ **Exam Predictions** | Auto-generated practice questions based on course content analysis |
+| ✅ **Autonomous Mode** | Fully automated, non-interactive operation for batch processing |
+
+## 📚 Supported Subjects
+
+| Subject Category | Example Courses | SVG Visualization Types |
+|------------------|----------------|------------------------|
+| 📐 Mathematics | Calculus, Linear Algebra, Probability, Complex Analysis | Function plots, integral areas, vector spaces, series expansions |
+| ⚛️ Physics | Mechanics, Electromagnetism, Optics, Thermodynamics | Force diagrams, field lines, ray tracing, thermodynamic cycles |
+| 🔌 Circuits & Electronics | Circuit Analysis, Analog/Digital Electronics, Signals & Systems | Schematics, timing diagrams, Bode plots, state transitions |
+| 💻 Computer Science | Data Structures, Algorithms, Operating Systems, Networks | Structure diagrams, flowcharts, state machines, network topologies |
+| 🏗️ Engineering | Control Theory, Mechanical Principles, Civil Structures | Control block diagrams, mechanical models, signal flow graphs |
+| 📡 Signal Processing | DSP, Communications, Image Processing | (Original DSP functionality fully preserved) |
+
+Concept-memorization courses (Biology, History, Medicine) also work — skill automatically adds comparison tables, mnemonics, and mind maps.
 
 ---
 
@@ -178,22 +207,35 @@ The output is a single `.html` file — double-click to open in your browser and
 
 **Input**: A folder of courseware files (PDF/PPTX/DOCX)
 
-**Output**: A single, self-contained interactive HTML file featuring:
+**Output**: A single, self-contained interactive HTML file, **designed for students with weak foundations**, featuring:
 
+### 📚 Enhanced Content Depth (Beginner-Friendly)
+- 🔴 **5-Layer Concept Explanation**: Each core concept includes Definition → Diagram → Physical Meaning → Math Breakdown → Applicability Conditions
+- 🔴 **Ultra-Detailed Derivations**: Each derivation has at least 5 steps, with "why this step" explanations — no skipped steps!
+- 🔴 **Symbol Annotations**: Every mathematical symbol includes meaning, unit, and value range on first appearance
+- 🔴 **Comprehensive Computational Problems**: At least one major problem per chapter, including exam point analysis, strategy selection, detailed steps, verification methods, and common error warnings
+- 🔴 **Applicability & Limitations**: Every formula clearly lists when it works and common misapplication scenarios
+
+### 🖼️ Smart SVG Visualization (Subject-Adaptive)
+- 🔴 **At least 5 SVG diagrams per chapter**, auto-generated based on subject type
+- Subject-optimized: math function plots, physics force diagrams, circuit schematics, data structure graphs
+- Pure code vector graphics: distortion-free zooming, crisp printing, small file size
+- Text-image alignment: each core concept explanation followed immediately by visual diagram for better understanding
+
+### 🎮 Interactive Learning Features
 - 📋 Exam cover sheet (course name, scope, format, instructor, textbook)
 - 📖 Layered reading guide (multiple review paths for different skill levels)
 - 📑 Clickable table of contents with progress tracking bar
-- 🔍 Full-text search
+- 🔍 **Full-text search** (searches reading guide, table of contents, all chapters, and appendices)
 - 🗺️ Core concept mind map (inline SVG)
 - 📌 Key concept deep dives (bilingual terminology, complete derivations)
 - 🔑 Critical theorems and relationships
 - 📐 **Collapsible derivation steps** (click to expand, save screen space)
 - ⚡📖 **Tabbed views** (Quick Review / Detailed Explanation toggle)
-- 🃏 **Flashcard flip cards** (click to flip — term on front, definition on back)
+- 🃏 **Flashcard flip cards** (click to flip — term on front, definition on back, JavaScript event binding)
 - 📝 **Practice quizzes** (concept checks with revealable answers)
-- ✏️ Worked examples (solution immediately follows problem)
+- ✏️ Worked examples (solution immediately follows problem, with verification and common pitfalls)
 - 💡 Intuitive explanations (everyday analogies and mnemonics)
-- 🖼️ Original courseware images + inline SVG diagrams
 - 📋 Appendix A: Formula quick-reference cards (by chapter)
 - 📋 Appendix B: Problem-solving templates (step-by-step)
 - 📋 Appendix C: Common mistakes and pitfalls (confusable concepts)
@@ -274,7 +316,9 @@ The AI may search for supplementary context from:
 
 ### Phase 4: HTML Generation
 
-The AI generates an **interactive** HTML document with:
+The AI generates an **interactive** HTML document. **The document is massive (2000+ lines) and is built using a serial Python script append approach** — write the CSS and page structure with the Write tool first, then append chapter content in batches (2-3 chapters per batch) via Python scripts, and finally append appendices and JavaScript. This avoids timeouts and output truncation from one-shot generation.
+
+The output includes:
 - **MathJax** rendering for formulas (LaTeX)
 - **Inline SVG** diagrams (flowcharts, comparison charts, plots)
 - **Original courseware images** (relative paths during generation, then base64-embedded via `embed_images.py`)
@@ -295,7 +339,7 @@ The AI runs a 25-item checklist covering structure completeness, interactivity, 
 
 ### Phase 6: Exam Prediction (Optional)
 
-After finishing the review document, the AI can generate an **exam prediction document** — high-frequency topic predictions, chapter exercises, a mock exam with solutions.
+After finishing the review document, the AI can generate a **standalone HTML exam prediction document** — high-frequency topic predictions, chapter exercises (multiple choice, fill-in-the-blank, calculation problems), a mock exam with solutions. The prediction document uses an exam-style layout (serif fonts, minimalist design), independent from the review document, for easy printing and distribution.
 
 ### Image Recognition Capabilities
 
@@ -306,17 +350,6 @@ For pure-image courseware (scanned PDFs, image-only PPTX), this skill uses a thr
 | 1 | Built-in model vision | Direct image reading (requires multimodal model) |
 | 2 | MCP vision server | External vision tools via MCP protocol |
 | 3 | User-guided resolution | Switch models, install MCP, or pre-process with OCR (Tesseract) |
-
-### Suitable Course Types
-
-This skill is designed for **STEM exam review** and excels with:
-
-- **Math-heavy courses**: Calculus, Linear Algebra, Probability Theory, Complex Analysis
-- **Signal/Systems courses**: Digital Signal Processing, Signals & Systems, Communication Theory
-- **Physics courses**: University Physics, Theoretical Mechanics, Quantum Mechanics
-- **Programming/CS courses**: Data Structures, Algorithm Design, Machine Learning
-
-Also works well for concept-heavy courses (biology, history, medicine), automatically adapting with more comparison tables, mnemonics, and mind maps.
 
 ---
 
@@ -554,4 +587,4 @@ pip install -r requirements.txt
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-Copyright (c) 2026 Jiawei Li
+Copyright (c) 2026 Li Jiawei, Peng Chen, Cai Haoxuan

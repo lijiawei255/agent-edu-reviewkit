@@ -30,9 +30,9 @@ agent-edu-reviewkit/
 1. **Phase 1 — Scope**: Agent scans courseware files, confirms exam scope with user. Autonomous agents (OpenClaw/Hermes) read `exam-scope.json` or infer scope from filenames.
 2. **Phase 2 — Extraction**: User runs `extract_course_materials.py` to extract text + images. Agent reads all output. Pure-image files (scan PDFs) are handled via vision fallback.
 3. **Phase 3 — Research**: Agent optionally searches GitHub/Wikipedia for supplementary references.
-4. **Phase 4 — HTML generation**: Agent produces a single self-contained interactive HTML file with MathJax, inline SVG, extracted images, responsive CSS, print styles, and interactive learning components (collapsible derivations, tabbed views, practice quizzes, flashcards, progress tracker, search).
+4. **Phase 4 — HTML generation**: Agent produces a single self-contained interactive HTML file. Built using serial Python script append mode (Write tool for header/CSS → Python scripts for chapter batches → final append for appendices + JS). Sub-agents are prohibited — they fail with large outputs.
 5. **Phase 5 — Quality check**: 25-item checklist verification.
-6. **Phase 6 — Exam predictions (optional)**: Agent optionally generates an exam prediction/practice question document based on course content analysis.
+6. **Phase 6 — Exam predictions (optional)**: Agent generates a standalone HTML exam prediction document (multiple choice, fill-in-blank, calculation problems). Always output as an independent HTML file — never append to the review document.
 
 ## Multi-agent support
 

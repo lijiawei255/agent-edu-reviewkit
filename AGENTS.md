@@ -69,17 +69,28 @@ OpenClaw 和 Hermes 是 Claw 类自主化智能体，通过消息应用（WhatsA
 
 ```json
 {
-  "course_name_zh": "数字信号处理",
-  "course_name_en": "Digital Signal Processing",
-  "instructor": "张三",
-  "textbook": "《数字信号处理》，程佩青，第四版",
+  "course_name_zh": "课程名称（如：线性代数、电路分析等）",
+  "course_name_en": "Course Name",
+  "course_type": "mathematics|physics|circuits|computer|engineering|signals",
+  "instructor": "教师姓名",
+  "textbook": "教材名称",
   "exam_type": "闭卷",
   "language": "zh",
   "chapters_in_scope": ["第1章", "第2章", "第3章"],
   "chapters_excluded": ["第6章"],
-  "output_filename": "DSP_期末复习指南.html"
+  "output_filename": "课程_期末复习指南.html"
 }
 ```
+
+**course_type 取值说明**：
+| 取值 | 对应科目类别 |
+|------|-------------|
+| `mathematics` | 数学类（微积分、线性代数、概率论、复变函数等） |
+| `physics` | 物理类（力学、电磁学、光学、热力学等） |
+| `circuits` | 电路电子类（电路分析、模电、数电、信号与系统等） |
+| `computer` | 计算机类（数据结构、算法、操作系统、计算机网络等） |
+| `engineering` | 工程类（控制理论、机械原理、土木结构等） |
+| `signals` | 信号处理类（DSP、通信原理、图像处理等） |
 
 **Level 2 — 自动推断**
 
@@ -107,13 +118,14 @@ OpenClaw 和 Hermes 是 Claw 类自主化智能体，通过消息应用（WhatsA
 ### Phase 4 替代方案
 
 - 使用推断值生成 HTML
+- 采用串行 Python 脚本分批追加模式（Write 工具写入头部 → Python 脚本逐批追加2-3章 → 最后追加附录+JS），避免子Agent或一次性生成导致的超时和输出截断
 - 在文档顶部（hero 区域之后）插入醒目的自主模式横幅：
   > ⚠ 此文档由自主代理自动生成，考试范围为自动推断，请仔细核对。如需修正，请编辑课件目录中的 `exam-scope.json` 后重新生成。
 
 ### Phase 6 替代方案
 
 - 默认生成押题文档（除非 `exam-scope.json` 中另有配置）
-- 作为单独 HTML 文件输出，不询问用户选择
+- **作为独立 HTML 文件输出**，不追加到复习文档末尾
 
 ### 输出信令
 
