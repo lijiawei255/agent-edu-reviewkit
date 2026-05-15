@@ -435,7 +435,13 @@ window.MathJax = {
   svg: { fontCache: 'global' }
 };
 </script>
-<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script id="MathJax-script" async src="./mathjax/es5/tex-svg.js"
+          onerror="
+            var cdn=document.createElement('script');
+            cdn.id='MathJax-script';cdn.async=true;
+            cdn.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
+            this.remove();document.head.appendChild(cdn);
+          "></script>
 <style>
 /* 使用清晰、克制、适合学习材料的排版；需包含响应式和打印样式 */
 </style>

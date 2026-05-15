@@ -11,13 +11,16 @@ agent-edu-reviewkit/
 ├── README.md                           # Chinese README (GitHub default)
 ├── README-en.md                        # English README
 ├── LICENSE                             # MIT
+├── requirements.txt                    # Python dependencies
 ├── .gitignore                          # Excludes 测试课件(不提交)/ and 测试输出(不提交)/
 ├── extract_course_materials.py         # Python script: text + image extraction
 ├── embed_images.py                     # Python script: base64 image embedding
+├── setup_mathjax.py                    # Python script: offline MathJax v3 download
 ├── opencode.json                       # OpenCode custom agent definition
 ├── exam-scope-template.json            # Template for exam scope config (autonomous agents)
 ├── skills/
-│   └── course-review-guide.md          # The skill definition (YAML frontmatter)
+│   ├── course-review-guide.md          # The primary skill definition (YAML frontmatter)
+│   └── course-notes.md                 # Chapter-by-chapter notes skill
 ├── 测试课件(不提交)/                    # Test courseware (NOT committed)
 └── 测试输出(不提交)/                    # Test output (NOT committed)
 ```
@@ -36,7 +39,7 @@ agent-edu-reviewkit/
 | Platform | Priority | Config file | Interaction mode |
 |----------|----------|-------------|-----------------|
 | Claude Code | P0 | CLAUDE.md | Full interactive |
-| Codex | P0 | codex.md | Full interactive |
+| Codex | P0 | Custom Prompt | Full interactive |
 | OpenCode | P1 | AGENTS.md, opencode.json | Full interactive |
 | OpenClaw/Hermes | P2 | AGENTS.md | Autonomous (limited interaction) |
 

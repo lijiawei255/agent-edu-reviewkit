@@ -13,6 +13,12 @@ import base64
 import argparse
 from html.parser import HTMLParser
 
+# HTML 无内容标签（不生成闭合标签）
+VOID_ELEMENTS = {
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'source', 'track', 'wbr',
+}
+
 
 def mime_type_from_ext(ext):
     """通过文件扩展名推断 MIME 类型"""
@@ -25,12 +31,41 @@ def mime_type_from_ext(ext):
         '.webp': 'image/webp',
         '.svg':  'image/svg+xml',
         '.tiff': 'image/tiff',
+        '.ico':  'image/x-icon',
     }
     return mapping.get(ext.lower(), 'application/octet-stream')
 
 
+def validate_image(filepath):
+    """检查图片文件是否可读（魔数校验）"""
+    if not os.path.exists(filepath):
+        return False
+    if os.path.getsize(filepath) < 32:
+        return False
+    try:
+        with open(filepath, 'rb') as f:
+            header = f.read(12)
+        valid = [
+            b'\x89PNG\r\n\x1a\n',
+            b'\xff\xd8\xff',
+            b'GIF8',
+            b'BM',
+            b'<svg',
+            b'<SVG',
+            b'<?xml',
+        ]
+        for magic in valid:
+            if header[:len(magic)] == magic:
+                return True
+        if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+            return True
+        return False
+    except OSError:
+        return False
+
+
 class ImgSrcRewriter(HTMLParser):
-    """解析HTML，替换 <img src> 为 data URI"""
+    """解析HTML，将图片引用替换为 base64 data URI"""
 
     def __init__(self, image_dir, image_cache):
         super().__init__()
@@ -39,13 +74,19 @@ class ImgSrcRewriter(HTMLParser):
         self.output_parts = []
         self.embedded_count = 0
         self.total_size = 0
+        self._path_index = None  # 延迟构建：basename -> full_path 索引
+
+    def error(self, message):
+        """忽略 HTML 解析错误，避免因畸形输入崩溃"""
+        pass
 
     def handle_starttag(self, tag, attrs):
-        attr_str = self._build_attr_string(tag, attrs, is_start=True)
+        attr_str = self._build_attr_string(tag, attrs)
         self.output_parts.append(f"<{tag}{attr_str}>")
 
     def handle_endtag(self, tag):
-        self.output_parts.append(f"</{tag}>")
+        if tag not in VOID_ELEMENTS:
+            self.output_parts.append(f"</{tag}>")
 
     def handle_data(self, data):
         self.output_parts.append(data)
@@ -65,49 +106,111 @@ class ImgSrcRewriter(HTMLParser):
     def handle_charref(self, name):
         self.output_parts.append(f"&#{name};")
 
-    def _build_attr_string(self, tag, attrs, is_start):
+    def _build_attr_string(self, tag, attrs):
         result = []
+        # 用于判断 link 标签是否引用图标
+        rel_value = None
         for name, value in attrs:
-            if tag == 'img' and name == 'src':
-                new_src = self._convert_src(value)
-                result.append(f' {name}="{new_src}"')
-            elif value is None:
+            if name == 'rel':
+                rel_value = (value or '').lower()
+
+        for name, value in attrs:
+            if value is None:
                 result.append(f' {name}')
+            elif tag == 'img' and name == 'src':
+                result.append(f' {name}="{self._convert_src(value)}"')
+            elif tag == 'img' and name == 'srcset':
+                result.append(f' {name}="{self._convert_srcset(value)}"')
+            elif tag == 'source' and name == 'srcset':
+                result.append(f' {name}="{self._convert_srcset(value)}"')
+            elif tag == 'image' and name == 'href':
+                result.append(f' {name}="{self._convert_src(value)}"')
+            elif tag == 'link' and name == 'href' and rel_value and 'icon' in rel_value:
+                result.append(f' {name}="{self._convert_src(value)}"')
             else:
                 result.append(f' {name}="{value}"')
         return ''.join(result)
 
+    def _convert_srcset(self, srcset_value):
+        """将 srcset 属性中的所有 URL 转换为 data URI"""
+        parts = []
+        for entry in srcset_value.split(','):
+            entry = entry.strip()
+            if not entry:
+                continue
+            tokens = entry.rsplit(None, 1)
+            if len(tokens) == 2:
+                url, descriptor = tokens
+                desc_lower = descriptor.rstrip(',')
+                if desc_lower in ('1x', '2x', '3x', '4x') or desc_lower.endswith('w'):
+                    new_url = self._convert_src(url.strip())
+                    parts.append(f"{new_url} {descriptor}")
+                    continue
+            new_url = self._convert_src(entry.strip())
+            parts.append(new_url)
+        return ', '.join(parts)
+
+    def _resolve_image(self, src):
+        """多级路径解析：子目录保留 → 纯文件名 → 当前目录 → 递归搜索"""
+        if os.path.isabs(src) and os.path.exists(src):
+            return src
+
+        # 策略1：相对于 image_dir，保留子目录结构
+        candidate = os.path.normpath(os.path.join(self.image_dir, src.lstrip('/\\')))
+        if os.path.exists(candidate):
+            return candidate
+
+        # 策略2：仅文件名（向后兼容的扁平查找）
+        candidate = os.path.join(self.image_dir, os.path.basename(src))
+        if os.path.exists(candidate):
+            return candidate
+
+        # 策略3：相对于当前工作目录
+        if os.path.exists(src):
+            return src
+
+        # 策略4：在 image_dir 中递归搜索同名文件
+        basename = os.path.basename(src)
+        if self._path_index is None:
+            self._path_index = {}
+            if os.path.isdir(self.image_dir):
+                for root, _dirs, files in os.walk(self.image_dir):
+                    for fname in files:
+                        if fname not in self._path_index:
+                            self._path_index[fname] = os.path.join(root, fname)
+        match = self._path_index.get(basename)
+        if match:
+            return match
+
+        return None
+
     def _convert_src(self, src):
-        """将相对路径转换为 base64 data URI。如果图片找不到，保持原路径不变。"""
+        """将相对路径转换为 base64 data URI。找不到文件则保持原路径。"""
         if src.startswith('data:') or src.startswith('http://') or src.startswith('https://'):
             return src
 
-        # 解析图片文件路径
-        img_path = src
-        if not os.path.isabs(img_path):
-            # 尝试从 image_dir 解析
-            candidate = os.path.join(self.image_dir, os.path.basename(img_path))
-            if os.path.exists(candidate):
-                img_path = candidate
-            # 也尝试原始相对路径
-            elif os.path.exists(img_path):
-                img_path = img_path
+        img_path = self._resolve_image(src)
 
-        if not os.path.exists(img_path):
-            print(f"  ⚠ 警告：找不到图片文件 '{src}'，保持原始引用", file=sys.stderr)
+        if img_path is None or not validate_image(img_path):
+            if img_path is None:
+                print(f"  ⚠ 警告：找不到图片文件 '{src}'，保持原始引用", file=sys.stderr)
+            else:
+                print(f"  ⚠ 警告：图片文件 '{src}' 损坏或无法识别，保持原始引用", file=sys.stderr)
             return src
 
-        if img_path in self.image_cache:
-            encoded = self.image_cache[img_path]
+        abs_path = os.path.abspath(img_path)
+
+        if abs_path in self.image_cache:
+            encoded = self.image_cache[abs_path]
         else:
-            with open(img_path, 'rb') as f:
+            with open(abs_path, 'rb') as f:
                 data = f.read()
             encoded = base64.b64encode(data).decode('ascii')
-            self.image_cache[img_path] = encoded
+            self.image_cache[abs_path] = encoded
             self.embedded_count += 1
             self.total_size += len(data)
 
-        ext = os.path.splitext(img_path)[1]
+        ext = os.path.splitext(abs_path)[1]
         mime = mime_type_from_ext(ext)
         return f"data:{mime};base64,{encoded}"
 
@@ -152,7 +255,7 @@ def main():
     print(f"Done: {rewriter.embedded_count} image(s) embedded")
     if rewriter.embedded_count > 0:
         size_kb = rewriter.total_size / 1024
-        encoded_kb = rewriter.total_size * 1.37 / 1024  # base64 ~37% overhead
+        encoded_kb = rewriter.total_size * 1.37 / 1024
         print(f"  Image raw size: {size_kb:.0f} KB")
         print(f"  Base64 encoded: ~{encoded_kb:.0f} KB")
     print(f"  Output: {os.path.abspath(output_path)}")

@@ -217,6 +217,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# MathJax 本地安装（通过 setup_mathjax.py 生成）
+mathjax/
+
 # 测试课件与测试输出（不提交）
 测试课件(不提交)/
 测试输出(不提交)/
