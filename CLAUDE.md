@@ -19,7 +19,12 @@ agent-edu-reviewkit/
 ├── opencode.json                       # OpenCode custom agent definition
 ├── exam-scope-template.json            # Template for exam scope config (autonomous agents)
 ├── skills/
-│   ├── course-review-guide.md          # The primary skill definition (YAML frontmatter)
+│   ├── course-review-guide/            # The primary skill (directory-based)
+│   │   ├── SKILL.md                    # Core skill (~355 lines): phase-by-phase flow + quality gates
+│   │   └── references/
+│   │       ├── html-template.md        # Complete HTML/CSS/JS template
+│   │       ├── quality-checklist.md    # 40-item quality verification checklist
+│   │       └── prediction-guide.md     # Exam prediction document template + standards
 │   └── course-notes.md                 # Chapter-by-chapter notes skill
 ├── 测试课件(不提交)/                    # Test courseware (NOT committed)
 └── 测试输出(不提交)/                    # Test output (NOT committed)

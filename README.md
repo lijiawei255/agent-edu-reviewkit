@@ -124,7 +124,7 @@ pip --version
 | **Kimi Code** | [官方文档](https://kimi.moonshot.cn/) | 完整交互 | 国内用户 |
 | **OpenClaw/Hermes** | [安装文档](https://docs.openclaw.ai/) | 自主模式 | 想全自动化运行的用户 |
 
-> 💡 **没有 AI 编程助手？** 你也可以直接把 `skills/course-review-guide.md` 的内容复制粘贴到任何 AI 聊天工具（如 ChatGPT、Kimi Chat、DeepSeek）中，然后告诉它帮你生成复习文档。这是最简单的方式，见下方快速开始。
+> 💡 **没有 AI 编程助手？** 你也可以直接把 `skills/course-review-guide/SKILL.md` 的内容复制粘贴到任何 AI 聊天工具（如 ChatGPT、Kimi Chat、DeepSeek）中，然后告诉它帮你生成复习文档。这是最简单的方式，见下方快速开始。
 
 ---
 
@@ -171,9 +171,9 @@ pip install -r requirements.txt
 
 打开你使用的 AI 助手（Claude Code、ChatGPT、Kimi Chat 等），发送：
 
-> 请按照 skills/course-review-guide.md 中的指引，帮我把 [课件目录路径] 中的课件转化为 HTML 考试复习文档。
+> 请按照 skills/course-review-guide/SKILL.md 中的指引，帮我把 [课件目录路径] 中的课件转化为 HTML 考试复习文档。
 
-如果你使用的是聊天式 AI（非编程助手），需要同时把项目中 `skills/course-review-guide.md` 的内容复制粘贴到对话中。
+如果你使用的是聊天式 AI（非编程助手），需要同时把项目中 `skills/course-review-guide/SKILL.md` 的内容复制粘贴到对话中。
 
 **🤖 Claude Code 用户（推荐）：**
 
@@ -418,7 +418,7 @@ AI 助手自动进行 **36 项质量检查**，涵盖结构完整性、交互功
 
 | 技能 | 文件 | 用途 | 适合场景 |
 |------|------|------|---------|
-| **course-review-guide** | `skills/course-review-guide.md` | 生成完整的考试复习文档 | 考前集中复习、快速过知识点 |
+| **course-review-guide** | `skills/course-review-guide/SKILL.md` | 生成完整的考试复习文档 | 考前集中复习、快速过知识点 |
 | **course-notes** | `skills/course-notes.md` | 逐章生成结构化学习笔记 | 长期学习、平时跟课、深入理解 |
 
 使用方法与复习指南相同——在 AI 助手中告知你想生成**逐章笔记**而非考试复习文档即可：

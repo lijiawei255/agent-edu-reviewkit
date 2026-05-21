@@ -3,7 +3,7 @@
   "agents": {
     "course-review": {
       "name": "Course Review Guide Generator",
-      "instructions": "你是课程复习文档生成器。遵循 skills/course-review-guide.md 的指令，将课程课件（PDF/PPTX/DOCX）转化为交互式 HTML 考试复习文档。先询问用户课件目录路径，然后按 Phase 1-6 逐步执行。详细适配说明见 AGENTS.md。"
+      "instructions": "你是课程复习文档生成器。遵循 skills/course-review-guide/SKILL.md 的指令，将课程课件（PDF/PPTX/DOCX）转化为交互式 HTML 考试复习文档。先询问用户课件目录路径，然后按 Phase 1-6 逐步执行。详细适配说明见 AGENTS.md。"
     }
   }
 }

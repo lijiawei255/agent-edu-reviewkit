@@ -124,7 +124,7 @@ pip --version
 | **Kimi Code** | [Official docs](https://kimi.moonshot.cn/) | Full interactive | Users in China |
 | **OpenClaw/Hermes** | [Installation docs](https://docs.openclaw.ai/) | Autonomous | Fully automated workflow |
 
-> 💡 **Don't have an AI coding assistant?** You can simply copy-paste the contents of `skills/course-review-guide.md` into any AI chat tool (ChatGPT, Kimi Chat, DeepSeek, etc.) and tell it to generate a review document. This is the simplest path — see Quick Start below.
+> 💡 **Don't have an AI coding assistant?** You can simply copy-paste the contents of `skills/course-review-guide/SKILL.md` into any AI chat tool (ChatGPT, Kimi Chat, DeepSeek, etc.) and tell it to generate a review document. This is the simplest path — see Quick Start below.
 
 ---
 
@@ -171,9 +171,9 @@ Place your courseware files in a folder:
 
 Open your AI assistant (Claude Code, ChatGPT, Kimi Chat, etc.) and say:
 
-> Follow the instructions in skills/course-review-guide.md and help me convert the course materials in [path/to/courseware] into an HTML exam review document.
+> Follow the instructions in skills/course-review-guide/SKILL.md and help me convert the course materials in [path/to/courseware] into an HTML exam review document.
 
-If you're using a chat-style AI (not a coding assistant), paste the contents of `skills/course-review-guide.md` into the conversation first.
+If you're using a chat-style AI (not a coding assistant), paste the contents of `skills/course-review-guide/SKILL.md` into the conversation first.
 
 **🤖 Claude Code users (recommended):**
 
@@ -219,11 +219,14 @@ The output is a single `.html` file — double-click to open in your browser and
 - 🔴 **Comprehensive Computational Problems**: At least one major problem per chapter, including exam point analysis, strategy selection, detailed steps, verification methods, and common error warnings
 - 🔴 **Applicability & Limitations**: Every formula clearly lists when it works and common misapplication scenarios
 
-### 🖼️ Smart SVG Visualization (Subject-Adaptive)
-- 🔴 **At least 5 SVG diagrams per chapter**, auto-generated based on subject type
-- Subject-optimized: math function plots, physics force diagrams, circuit schematics, data structure graphs
-- Pure code vector graphics: distortion-free zooming, crisp printing, small file size
-- Text-image alignment: each core concept explanation followed immediately by visual diagram for better understanding
+### 🖼️ Smart Courseware Image Embedding
+- 🔴 **At least 8-10 original courseware images per chapter**, every core concept has a corresponding image
+- Context-based intelligent matching: extracts surrounding text to auto-classify and link images to chapters
+- Automatic image type recognition: diagrams, waveforms/spectra, formula derivations, examples, comparisons, physical models
+- Cross-validation: context keyword matching + visual content description = high-confidence embedding
+- Auto-generated captions: image titles and descriptions based on surrounding context
+- Quality detection & deduplication: auto-detect low-quality and duplicate images
+- **Inline SVG only as a last-resort backup** when courseware lacks images for a concept
 
 ### 🎮 Interactive Learning Features
 - 📋 Exam cover sheet (course name, scope, format, instructor, textbook)
@@ -384,7 +387,7 @@ In addition to `course-review-guide` (exam review), this project includes the `c
 
 | Skill | File | Purpose | Best For |
 |-------|------|---------|----------|
-| **course-review-guide** | `skills/course-review-guide.md` | Generate a complete exam review document | Pre-exam cramming, quick review |
+| **course-review-guide** | `skills/course-review-guide/SKILL.md` | Generate a complete exam review document | Pre-exam cramming, quick review |
 | **course-notes** | `skills/course-notes.md` | Generate chapter-by-chapter structured notes | Long-term learning, following lectures, deep understanding |
 
 Usage is the same — tell your AI assistant you want **chapter notes** instead of an exam review:

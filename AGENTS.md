@@ -6,7 +6,7 @@
 
 ## 主要技能
 
-完整技能定义：`skills/course-review-guide.md`
+完整技能定义：`skills/course-review-guide/SKILL.md`
 
 请按照该文件中的 6 个 Phase 逐步执行。以下为不同 Agent 平台的特化适配说明。
 
