@@ -2,5 +2,4 @@ pypdf>=3.0.0
 python-pptx>=0.6.21
 python-docx>=0.8.11
 
-# Optional: for PDF page rendering (--render-pages flag in extract_course_materials.py)
-# pymupdf>=1.23.0
+pymupdf>=1.23.0

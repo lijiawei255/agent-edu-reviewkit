@@ -16,10 +16,12 @@
 | Feature | Description |
 |---------|-------------|
 | ✅ **All STEM Subjects Supported** | Math, physics, circuits, CS, mechanical engineering, signal processing, and more |
-| ✅ **Smart SVG Visualization** | Auto-generated function plots, circuit diagrams, data structure graphs, physics models — 5+ per chapter |
+| ✅ **Smart Image Matching** | Context-based image-chapter intelligent matching, prioritize original courseware images — 8-10 per chapter |
+| ✅ **Multi-Level Vision Fallback** | Model vision → MCP vision server → user guidance, ensures image content accuracy |
+| ✅ **Image Quality Detection** | Auto-analyze image quality, deduplication, report missing and low-quality images |
 | ✅ **Multi-Platform Compatible** | Works with Claude Code, OpenCode, OpenClaw, Hermes, Kimi Code, Copilot |
 | ✅ **Single Self-Contained File** | All CSS/JS/images/MathJax inline — zero dependencies, just double-click and use |
-| ✅ **Interactive Learning** | Flashcards, search, collapsible derivations, progress tracking, quizzes, tabbed views |
+| ✅ **Interactive Learning** | Flashcards (double-click protection), search, collapsible derivations, progress tracking, quizzes, tabbed views |
 | ✅ **Print-Friendly** | Optimized print styles for paper-based studying |
 | ✅ **Exam Predictions** | Auto-generated practice questions based on course content analysis |
 | ✅ **Autonomous Mode** | Fully automated, non-interactive operation for batch processing |
@@ -122,7 +124,7 @@ pip --version
 | **Kimi Code** | [Official docs](https://kimi.moonshot.cn/) | Full interactive | Users in China |
 | **OpenClaw/Hermes** | [Installation docs](https://docs.openclaw.ai/) | Autonomous | Fully automated workflow |
 
-> 💡 **Don't have an AI coding assistant?** You can simply copy-paste the contents of `skills/course-review-guide.md` into any AI chat tool (ChatGPT, Kimi Chat, DeepSeek, etc.) and tell it to generate a review document. This is the simplest path — see Quick Start below.
+> 💡 **Don't have an AI coding assistant?** You can simply copy-paste the contents of `skills/course-review-guide/SKILL.md` into any AI chat tool (ChatGPT, Kimi Chat, DeepSeek, etc.) and tell it to generate a review document. This is the simplest path — see Quick Start below.
 
 ---
 
@@ -169,9 +171,9 @@ Place your courseware files in a folder:
 
 Open your AI assistant (Claude Code, ChatGPT, Kimi Chat, etc.) and say:
 
-> Follow the instructions in skills/course-review-guide.md and help me convert the course materials in [path/to/courseware] into an HTML exam review document.
+> Follow the instructions in skills/course-review-guide/SKILL.md and help me convert the course materials in [path/to/courseware] into an HTML exam review document.
 
-If you're using a chat-style AI (not a coding assistant), paste the contents of `skills/course-review-guide.md` into the conversation first.
+If you're using a chat-style AI (not a coding assistant), paste the contents of `skills/course-review-guide/SKILL.md` into the conversation first.
 
 **🤖 Claude Code users (recommended):**
 
@@ -194,10 +196,11 @@ Claude Code auto-detects the skill. Or trigger explicitly: `/skill:course-review
 The AI will guide you through:
 1. Confirming the exam scope (which chapters are included)
 2. Running the extraction script (the AI will tell you the exact command)
-3. Generating the interactive HTML review document
-4. Running `python embed_images.py <filename>.html` to inline all images
-5. (Optional) Running `python setup_mathjax.py` to download the math engine for offline formula viewing
-6. (Optional) Generating an exam prediction document
+3. Running `match_images.py --interactive` to intelligently match images to chapters
+4. Generating the interactive HTML review document
+5. Running `python embed_images.py <filename>.html` to inline all images
+6. (Optional) Running `python setup_mathjax.py` to download the math engine for offline formula viewing
+7. (Optional) Generating an exam prediction document
 
 The output is a single `.html` file — double-click to open in your browser and start studying.
 
@@ -216,11 +219,14 @@ The output is a single `.html` file — double-click to open in your browser and
 - 🔴 **Comprehensive Computational Problems**: At least one major problem per chapter, including exam point analysis, strategy selection, detailed steps, verification methods, and common error warnings
 - 🔴 **Applicability & Limitations**: Every formula clearly lists when it works and common misapplication scenarios
 
-### 🖼️ Smart SVG Visualization (Subject-Adaptive)
-- 🔴 **At least 5 SVG diagrams per chapter**, auto-generated based on subject type
-- Subject-optimized: math function plots, physics force diagrams, circuit schematics, data structure graphs
-- Pure code vector graphics: distortion-free zooming, crisp printing, small file size
-- Text-image alignment: each core concept explanation followed immediately by visual diagram for better understanding
+### 🖼️ Smart Courseware Image Embedding
+- 🔴 **At least 8-10 original courseware images per chapter**, every core concept has a corresponding image
+- Context-based intelligent matching: extracts surrounding text to auto-classify and link images to chapters
+- Automatic image type recognition: diagrams, waveforms/spectra, formula derivations, examples, comparisons, physical models
+- Cross-validation: context keyword matching + visual content description = high-confidence embedding
+- Auto-generated captions: image titles and descriptions based on surrounding context
+- Quality detection & deduplication: auto-detect low-quality and duplicate images
+- **Inline SVG only as a last-resort backup** when courseware lacks images for a concept
 
 ### 🎮 Interactive Learning Features
 - 📋 Exam cover sheet (course name, scope, format, instructor, textbook)
@@ -254,16 +260,16 @@ The output is a single `.html` file — double-click to open in your browser and
 
 ### Workflow Overview
 
-The process has six phases, guided step-by-step by the AI:
+The process has seven phases, guided step-by-step by the AI:
 
 ```
-Course files ──→ Phase 1: Scope ──→ Phase 2: Extraction ──→ Phase 3: Research
-                                                                     │
-                                                                     ▼
-                         HTML document ←── Phase 5: QA ←── Phase 4: Generate
-                                                                     │
-                                                                     ▼
-                                                           Phase 6: Exam Prediction (optional)
+Course files ──→ Phase 1: Scope ──→ Phase 2: Extraction ──→ Phase 2+: Image Matching ──→ Phase 3: Research
+                                                                                               │
+                                                                                               ▼
+                                                    HTML document ←── Phase 5: QA ←── Phase 4: Generate
+                                                                                               │
+                                                                                               ▼
+                                                                                     Phase 6: Exam Prediction (optional)
 ```
 
 ### Phase 1: Scope Confirmation
@@ -306,6 +312,28 @@ The script automatically:
 - Inserts `[IMAGE: xxx.png]` markers in extracted text at image positions
 - Produces a detailed extraction report
 
+### Phase 2+: Smart Image Matching
+
+After extraction, run `match_images.py` for intelligent image-to-chapter matching:
+
+```bash
+# Basic usage
+python match_images.py --text-dir extracted_text --image-dir extracted_images
+
+# Interactive confirmation mode (recommended, allows manual correction)
+python match_images.py --text-dir extracted_text --image-dir extracted_images --interactive
+
+# Specify output mapping file
+python match_images.py --text-dir extracted_text -o image_mapping.json
+```
+
+Features:
+- Parses all `[IMAGE: xxx.png]` markers, extracting 5 lines of context before/after each
+- Keyword-based classification into 6 types: diagrams, waveform/spectrum, formula/derivation, examples, comparisons, physical models
+- Confidence scoring, prioritizing high-confidence matches for embedding
+- Interactive mode allows manual correction of chapter assignments
+- Outputs `image_mapping.json` for use in downstream HTML generation
+
 ### Phase 3: Supplementary Research (Optional)
 
 The AI may search for supplementary context from:
@@ -335,7 +363,7 @@ python setup_mathjax.py                  # (One-time) Download MathJax locally f
 
 ### Phase 5: Quality Assurance
 
-The AI runs a 25-item checklist covering structure completeness, interactivity, math rendering, and print compatibility.
+The AI runs a 36-item checklist covering structure completeness, interactivity, math rendering, and print compatibility.
 
 ### Phase 6: Exam Prediction (Optional)
 
@@ -359,7 +387,7 @@ In addition to `course-review-guide` (exam review), this project includes the `c
 
 | Skill | File | Purpose | Best For |
 |-------|------|---------|----------|
-| **course-review-guide** | `skills/course-review-guide.md` | Generate a complete exam review document | Pre-exam cramming, quick review |
+| **course-review-guide** | `skills/course-review-guide/SKILL.md` | Generate a complete exam review document | Pre-exam cramming, quick review |
 | **course-notes** | `skills/course-notes.md` | Generate chapter-by-chapter structured notes | Long-term learning, following lectures, deep understanding |
 
 Usage is the same — tell your AI assistant you want **chapter notes** instead of an exam review:
@@ -566,6 +594,9 @@ Please open an issue on [GitHub Issues](https://github.com/lijiawei255/agent-edu
 - [ ] `extract_course_materials.py` tested on Python 3.9+
 - [ ] New features are documented
 - [ ] No test courseware or output files included (excluded via `.gitignore`)
+- [ ] **Eliminate subject-specific descriptions in the skill**: Search skill files for residual course-specific terminology (e.g., mechatronics, PLC, DSP, waveform spectrum), instructor names, or specific courseware filenames — these may be debugging artifacts that cause the skill to overfit to one course (test-set contamination), weakening cross-disciplinary generalization. The skill description should apply to all target subject types before submission
+- [ ] **Validate output with real courseware**: Run the full Phase 1-6 workflow against at least one actual course's materials, and verify that the generated review document achieves the intended goals of this change (e.g., interactive features work correctly, formulas render properly, image content cross-validates with surrounding text)
+- [ ] **Confirm only skill-related files are staged**: Run `git status` and verify the staging area contains only files under `skills/` plus project-root documentation and configuration files. Course materials, extraction outputs, and test HTML should never appear in the commit
 
 ### Local Development
 
