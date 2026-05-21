@@ -15,14 +15,13 @@
 <title>[课程名] 考试押题文档</title>
 <script>
 window.MathJax = {
-  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']], tags: 'ams' },
-  svg: { fontCache: 'global' }
+  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] }
 };
 </script>
-<script id="MathJax-script" async src="./mathjax/es5/tex-svg.js"
-        onerror="var cdn=document.createElement('script');cdn.id='MathJax-script';cdn.async=true;
-        cdn.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
-        this.remove();document.head.appendChild(cdn);"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+  onerror="var f=document.createElement('script');f.id='MathJax-script';f.async=true;
+  f.src='https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js';
+  this.remove();document.head.appendChild(f);"></script>
 <style>
   :root { --primary: #1a1a2e; --bg: #fafaf9; --text: #1a1a2e; --border: #d1d5db; --radius: 8px; }
   body {

@@ -594,6 +594,9 @@ Please open an issue on [GitHub Issues](https://github.com/lijiawei255/agent-edu
 - [ ] `extract_course_materials.py` tested on Python 3.9+
 - [ ] New features are documented
 - [ ] No test courseware or output files included (excluded via `.gitignore`)
+- [ ] **Eliminate subject-specific descriptions in the skill**: Search skill files for residual course-specific terminology (e.g., mechatronics, PLC, DSP, waveform spectrum), instructor names, or specific courseware filenames — these may be debugging artifacts that cause the skill to overfit to one course (test-set contamination), weakening cross-disciplinary generalization. The skill description should apply to all target subject types before submission
+- [ ] **Validate output with real courseware**: Run the full Phase 1-6 workflow against at least one actual course's materials, and verify that the generated review document achieves the intended goals of this change (e.g., interactive features work correctly, formulas render properly, image content cross-validates with surrounding text)
+- [ ] **Confirm only skill-related files are staged**: Run `git status` and verify the staging area contains only files under `skills/` plus project-root documentation and configuration files. Course materials, extraction outputs, and test HTML should never appear in the commit
 
 ### Local Development
 

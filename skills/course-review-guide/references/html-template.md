@@ -14,18 +14,26 @@ window.MathJax = {
   tex: {
     inlineMath: [['$', '$'], ['\\(', '\\)']],
     displayMath: [['$$', '$$'], ['\\[', '\\]']],
-    tags: 'ams'
-  },
-  svg: { fontCache: 'global' }
+  }
 };
 </script>
-<script id="MathJax-script" async src="./mathjax/es5/tex-svg.js"
-        onerror="
-          var cdn=document.createElement('script');
-          cdn.id='MathJax-script';cdn.async=true;
-          cdn.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
-          this.remove();document.head.appendChild(cdn);
-        "></script>
+<script>
+MathJax.startup = {
+  ready() { MathJax.startup.defaultReady(); }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script>
+// CDN fallback if jsdelivr unreachable (e.g. mainland China)
+document.getElementById('MathJax-script').addEventListener('error', function() {
+  var fallback = document.createElement('script');
+  fallback.id = 'MathJax-script';
+  fallback.async = true;
+  fallback.src = 'https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js';
+  this.remove();
+  document.head.appendChild(fallback);
+});
+</script>
 <noscript>
   <p style="color: #c41e3a; text-align: center; padding: 1rem; border: 2px dashed #c41e3a;">
     ⚠ 此文档需要 JavaScript 才能正确渲染数学公式。请启用 JavaScript 或使用现代浏览器打开。
@@ -918,14 +926,18 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 
 ## Python追加脚本模板
 
+**🔴 必须使用三双引号 `"""..."""`，严禁使用 `r'''...'''`（raw triple single quotes）。**
+
 ```python
 # -*- coding: utf-8 -*-
-content = r'''
-[HTML内容——所有反斜杠和引号由Python raw string自动处理]
-'''
+content = """
+[HTML内容——JS中的单引号 ' 在Python三双引号中无需任何转义，直接书写即可]
+"""
 with open('[目标文件].html', 'a', encoding='utf-8') as f:
     f.write(content)
-print('ChX-Y appended successfully')
+print('ChX-Y appended')
 ```
 
-**注意**：HTML内容中的 `'''` 需要避免——如Python代码示例或文本中的连续单引号。如果必须包含 `'''`，将脚本改为使用 `"""` 三引号或将内容分段。
+**为什么禁止 `r'''...'''`**：JavaScript 大量使用单引号 `'` 作为字符串分隔符（如 `addEventListener('click', ...)`, `getElementById('search')`, `classList.toggle('active')` 等）。在 Python `r'''...'''` raw string 中，连续单引号 `''` 会被原样写入文件，导致浏览器中的 JS 代码变成 `addEventListener(''click'', ...)` 而非 `addEventListener('click', ...)`——这是一个**静默的JS语法错误**，页面不会报错但所有交互功能失效。
+
+使用 `"""..."""` 三双引号后，JS 中的 `'` 在 Python 字符串中无需任何转义，直接写即可，从根本上避免此问题。
