@@ -16,10 +16,12 @@
 | Feature | Description |
 |---------|-------------|
 | ✅ **All STEM Subjects Supported** | Math, physics, circuits, CS, mechanical engineering, signal processing, and more |
-| ✅ **Smart SVG Visualization** | Auto-generated function plots, circuit diagrams, data structure graphs, physics models — 5+ per chapter |
+| ✅ **Smart Image Matching** | Context-based image-chapter intelligent matching, prioritize original courseware images — 8-10 per chapter |
+| ✅ **Multi-Level Vision Fallback** | Model vision → MCP vision server → user guidance, ensures image content accuracy |
+| ✅ **Image Quality Detection** | Auto-analyze image quality, deduplication, report missing and low-quality images |
 | ✅ **Multi-Platform Compatible** | Works with Claude Code, OpenCode, OpenClaw, Hermes, Kimi Code, Copilot |
 | ✅ **Single Self-Contained File** | All CSS/JS/images/MathJax inline — zero dependencies, just double-click and use |
-| ✅ **Interactive Learning** | Flashcards, search, collapsible derivations, progress tracking, quizzes, tabbed views |
+| ✅ **Interactive Learning** | Flashcards (double-click protection), search, collapsible derivations, progress tracking, quizzes, tabbed views |
 | ✅ **Print-Friendly** | Optimized print styles for paper-based studying |
 | ✅ **Exam Predictions** | Auto-generated practice questions based on course content analysis |
 | ✅ **Autonomous Mode** | Fully automated, non-interactive operation for batch processing |
@@ -194,10 +196,11 @@ Claude Code auto-detects the skill. Or trigger explicitly: `/skill:course-review
 The AI will guide you through:
 1. Confirming the exam scope (which chapters are included)
 2. Running the extraction script (the AI will tell you the exact command)
-3. Generating the interactive HTML review document
-4. Running `python embed_images.py <filename>.html` to inline all images
-5. (Optional) Running `python setup_mathjax.py` to download the math engine for offline formula viewing
-6. (Optional) Generating an exam prediction document
+3. Running `match_images.py --interactive` to intelligently match images to chapters
+4. Generating the interactive HTML review document
+5. Running `python embed_images.py <filename>.html` to inline all images
+6. (Optional) Running `python setup_mathjax.py` to download the math engine for offline formula viewing
+7. (Optional) Generating an exam prediction document
 
 The output is a single `.html` file — double-click to open in your browser and start studying.
 
@@ -254,16 +257,16 @@ The output is a single `.html` file — double-click to open in your browser and
 
 ### Workflow Overview
 
-The process has six phases, guided step-by-step by the AI:
+The process has seven phases, guided step-by-step by the AI:
 
 ```
-Course files ──→ Phase 1: Scope ──→ Phase 2: Extraction ──→ Phase 3: Research
-                                                                     │
-                                                                     ▼
-                         HTML document ←── Phase 5: QA ←── Phase 4: Generate
-                                                                     │
-                                                                     ▼
-                                                           Phase 6: Exam Prediction (optional)
+Course files ──→ Phase 1: Scope ──→ Phase 2: Extraction ──→ Phase 2+: Image Matching ──→ Phase 3: Research
+                                                                                               │
+                                                                                               ▼
+                                                    HTML document ←── Phase 5: QA ←── Phase 4: Generate
+                                                                                               │
+                                                                                               ▼
+                                                                                     Phase 6: Exam Prediction (optional)
 ```
 
 ### Phase 1: Scope Confirmation
@@ -306,6 +309,28 @@ The script automatically:
 - Inserts `[IMAGE: xxx.png]` markers in extracted text at image positions
 - Produces a detailed extraction report
 
+### Phase 2+: Smart Image Matching
+
+After extraction, run `match_images.py` for intelligent image-to-chapter matching:
+
+```bash
+# Basic usage
+python match_images.py --text-dir extracted_text --image-dir extracted_images
+
+# Interactive confirmation mode (recommended, allows manual correction)
+python match_images.py --text-dir extracted_text --image-dir extracted_images --interactive
+
+# Specify output mapping file
+python match_images.py --text-dir extracted_text -o image_mapping.json
+```
+
+Features:
+- Parses all `[IMAGE: xxx.png]` markers, extracting 5 lines of context before/after each
+- Keyword-based classification into 6 types: diagrams, waveform/spectrum, formula/derivation, examples, comparisons, physical models
+- Confidence scoring, prioritizing high-confidence matches for embedding
+- Interactive mode allows manual correction of chapter assignments
+- Outputs `image_mapping.json` for use in downstream HTML generation
+
 ### Phase 3: Supplementary Research (Optional)
 
 The AI may search for supplementary context from:
@@ -335,7 +360,7 @@ python setup_mathjax.py                  # (One-time) Download MathJax locally f
 
 ### Phase 5: Quality Assurance
 
-The AI runs a 25-item checklist covering structure completeness, interactivity, math rendering, and print compatibility.
+The AI runs a 36-item checklist covering structure completeness, interactivity, math rendering, and print compatibility.
 
 ### Phase 6: Exam Prediction (Optional)
 

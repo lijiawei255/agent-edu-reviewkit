@@ -113,6 +113,13 @@ def _guess_ext_from_bytes(data):
         return '.bmp'
     if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
         return '.webp'
+    # EMF/WMF: 浏览器不兼容的矢量格式，跳过
+    if len(data) >= 4 and data[0:4] in (b'\x01\x00\x00\x00', b'\x02\x00\x00\x00', b'\x03\x00\x00\x00'):
+        return None  # EMF
+    if len(data) >= 4 and data[0:4] == b'\xd7\xcd\xc6\x9a':
+        return None  # WMF
+    if len(data) >= 26 and data[22:26] == b'\xd7\xcd\xc6\x9a':
+        return None  # WMF with placeable header
     return '.png'
 
 
@@ -175,14 +182,17 @@ def extract_pdf(filepath, basename):
                 if not img_data or len(img_data) < 100:
                     continue
                 ext = _guess_ext_from_bytes(img_data)
+                if ext is None:
+                    print(f"  ⚠ 跳过不兼容图片格式 (EMF/WMF)，第{page_num}页 图{j+1}", file=sys.stderr)
+                    continue
                 img_name = f"{basename}_p{page_num}_img{j+1}{ext}"
                 img_path = os.path.join(图片输出目录, img_name)
                 with open(img_path, "wb") as f:
                     f.write(img_data)
                 lines.append(f"[图片: {img_name}]")
                 img_count += 1
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  ⚠ 警告：提取PDF图片时出错 (第{page_num}页 图{j+1}): {e}", file=sys.stderr)
 
     return "\n".join(lines), len(reader.pages), img_count
 
@@ -222,7 +232,7 @@ def extract_pptx(filepath, basename):
 
         for shape in slide.shapes:
             # --- 图片 ---
-            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            if shape.shape_type in (MSO_SHAPE_TYPE.PICTURE, MSO_SHAPE_TYPE.LINKED_PICTURE):
                 try:
                     img_blob = shape.image.blob
                     if img_blob and len(img_blob) >= 100:
@@ -237,8 +247,8 @@ def extract_pptx(filepath, basename):
                             f.write(img_blob)
                         slide_texts.append(f"[图片: {img_name}]")
                         img_count += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"  ⚠ 警告：提取PPTX图片时出错 (幻灯片{slide_num}): {e}", file=sys.stderr)
 
             # --- 文本框 ---
             if shape.has_text_frame:
@@ -303,10 +313,10 @@ def extract_docx(filepath, basename):
                     f.write(img_data)
                 lines.append(f"[图片: {img_name}]")
                 img_count += 1
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  ⚠ 警告：提取DOCX图片时出错 ({basename}): {e}", file=sys.stderr)
 
-    return "\n".join(lines), len(doc.paragraphs), img_count
+    return "\n".join(lines), -1, img_count
 
 
 # ============================================================
@@ -324,8 +334,8 @@ HANDLERS = {
 # 验证配置目录是否存在
 if not os.path.isdir(课件目录):
     print(f"错误：课件目录 '{课件目录}' 不存在。")
-    print("请修改 extract_course_materials.py 第49-53行配置区中的路径。")
-    print(f"  当前设置 课件目录 = {repr(课件目录)}")
+    print("请使用 --course-dir 参数指定课件目录，或通过 --help 查看完整用法。")
+    print(f"  示例: python extract_course_materials.py --course-dir \"你的课件路径\" --output-dir \"输出目录\"")
     sys.exit(1)
 
 目标文件 = []
@@ -374,7 +384,10 @@ for idx, fname in enumerate(目标文件, 1):
         if _args.render_pages and ext == ".pdf":
             page_rendered = render_pdf_pages(filepath, basename)
             总页面截图数 += page_rendered
-        header = f"======= {fname} =======\n页数/幻灯片数: {page_count}\n" + "=" * 60
+        if page_count >= 0:
+            header = f"======= {fname} =======\n页数/幻灯片数: {page_count}\n" + "=" * 60
+        else:
+            header = f"======= {fname} =======\n(DOCX: 页数不固定)\n" + "=" * 60
 
         if text.strip():
             outpath = os.path.join(文本输出目录, fname + ".txt")
@@ -384,7 +397,10 @@ for idx, fname in enumerate(目标文件, 1):
             总图片数 += img_count
             img_info = f", {img_count}张图片" if img_count else ""
             page_info = f", {page_rendered}张整页截图" if page_rendered else ""
-            print(f"  ✓ [{成功}/{len(目标文件)}] {fname} ({page_count}p{img_info}{page_info})")
+            if page_count >= 0:
+                print(f"  ✓ [{成功}/{len(目标文件)}] {fname} ({page_count}p{img_info}{page_info})")
+            else:
+                print(f"  ✓ [{成功}/{len(目标文件)}] {fname} (DOCX{img_info}{page_info})")
         else:
             空内容.append(fname)
             print(f"  ⚠ [{成功}/{len(目标文件)}] {fname} — 提取内容为空")

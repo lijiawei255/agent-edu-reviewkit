@@ -1,10 +1,12 @@
 {
   "course_name_zh": "",
   "course_name_en": "",
+  "course_type": "",
   "instructor": "",
   "textbook": "",
   "exam_type": "闭卷",
   "language": "zh",
+  "generate_prediction": false,
   "chapters_in_scope": [],
   "chapters_excluded": [],
   "output_filename": "复习指南.html"

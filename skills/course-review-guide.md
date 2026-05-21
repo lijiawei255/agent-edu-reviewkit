@@ -5,6 +5,39 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 
 # 课程复习文档生成器（HTML版）
 
+## 🔴 API兼容性重要警告（执行任何操作前必读）
+
+**问题描述**：
+
+某些AI API（包括Claude API）不支持直接传递原始文档文件（PDF/PPTX/DOCX）作为输入，仅支持以下内容类型：
+- `text` - 纯文本内容
+- `image` - 单个图片文件（PNG/JPG/GIF等）
+- `tool_use` / `tool_result` - 工具调用相关
+
+直接传递原始文档会触发以下错误：
+> `API Error: 400 The parameter messages.content.type specified in the request are not valid: invalid value: document, supported values are: text, thinking, image, 'tool_use' and tool_result`
+
+---
+
+**✅ 正确的处理流程（强制执行）**：
+
+| 步骤 | 操作 | 禁止操作 |
+|------|------|---------|
+| **1** | 始终先运行 `extract_course_materials.py` 提取文本和图片 | ❌ 禁止直接读取原始PDF/PPTX/DOCX文件进行内容识别 |
+| **2** | 仅读取 `extracted_text/` 中的文本文件（.txt） | ❌ 禁止将整个文档文件作为 `document` 类型传给API |
+| **3** | 仅读取 `extracted_images/` 中的**单个图片文件**进行视觉识别 | ❌ 禁止通过读取整个PDF来"识别其中的图片" |
+| **4** | 图片内容识别：每次只传一张图片，逐张处理 | ❌ 禁止批量传入多张图片到单个API调用 |
+
+---
+
+**常见错误场景**：
+- ❌ "让我读取这个PDF来了解课程内容" → **错误**
+- ✅ "让我运行提取脚本，然后读取提取出的文本和图片" → **正确**
+- ❌ "我来直接读取这个PPTX中的图片" → **错误**
+- ✅ "提取脚本运行完成，现在逐张读取 `extracted_images/` 中的图片" → **正确**
+
+---
+
 ## 概述
 
 本技能将课程原始课件一键转化为高质量、结构化、图文并茂的**单文件HTML交互式考试复习文档**。输出包含MathJax数学排版、内联SVG示意图、课件原图、完整公式推导、例题详解、交互式学习组件（可折叠推导、选项卡视图、练习测验、术语闪卡、进度追踪）、答题模板和常见错误附录。**公式残缺处自动还原，推导跳跃处自动补全，确保基础薄弱的学生仅靠本文档即可高效复习。**
@@ -129,10 +162,27 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 
 将项目根目录中的 `extract_course_materials.py` 复制到你的课件目录下。
 
-打开 `extract_course_materials.py`，修改第49-53行的配置区路径：
-- `课件目录`：你的课件所在目录
-- `文本输出目录`：提取文本的输出目录（默认为 `extracted_text`）
-- `图片输出目录`：提取图片的输出目录（默认为 `extracted_images`）
+**使用命令行参数运行**（无需修改代码）：
+
+```bash
+# 基础用法：指定课件目录和输出目录
+python extract_course_materials.py --course-dir "课件目录路径" --output-dir "输出目录"
+
+# 常用完整命令：
+python extract_course_materials.py \
+    --course-dir "./my-courseware" \
+    --text-output-dir "extracted_text" \
+    --image-output-dir "extracted_images"
+```
+
+**可选 --render-pages 参数**：如果使用的 AI 模型支持视觉（多模态模型），强烈推荐：
+
+```bash
+# 先安装 pymupdf: pip install pymupdf
+python extract_course_materials.py --course-dir "./my-courseware" --render-pages
+```
+
+这会将 PDF 页面渲染为整页截图，让 AI 能够看到完整版面（公式、图表、示意图在上文中），显著提升输出质量。对于扫描版 PDF（纯图片课件）必不可少。
 
 **功能说明**：
 - 支持 `.pdf`、`.pptx`/`.pptm`、`.docx`/`.dotx`/`.dotm` 格式
@@ -143,19 +193,35 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 
 ### 2.2 运行提取
 
-让用户运行 `python extract_course_materials.py`。
+**🔴 这是关键步骤，必须在任何内容读取之前完成**
+
+引导用户运行 `python extract_course_materials.py`。在此脚本会：
+- 从所有PDF/PPTX/DOCX文件中提取文本到 `extracted_text/`
+- 提取所有图片到 `extracted_images/`
+- 自动检测并标记纯图片型课件
+
+**绝对禁止跳过此步骤直接读取原始文档文件**——这会导致API的 `document` 类型错误。
 
 ### 2.3 读取提取结果
+
+**✅ 仅读取提取后的文件，永远不要直接读取原始课件文件
 
 提取成功后：
 
 1. **逐一读取** `extracted_text/` 下所有 `.txt` 文件，理解全部课件内容
 2. **浏览图片目录** `extracted_images/`，了解可用的图表资源
+   - 如需识别图片内容时，**每次只读取一张图片文件**（PNG/JPG等）
+   - ❌ 不要通过读取原始PDF/PPTX来"查看图片
 3. 对于内容较长的课件（>2000行），分段读取确保不遗漏
 
-### 2.4 SVG示意图规划（🔴 必须执行）
+**读取示例**：
+- ✅ `Read(path="extracted_text/chapter1.txt") → 正确
+- ✅ `Read(path="extracted_images/chapter1_p3_img2.png") → 正确  
+- ❌ `Read(path="课件/chapter1.pdf") → 错误（会触发document类型错误
 
-根据课程科目类型，为每个核心概念规划需要生成的SVG示意图：
+### 2.4 图片资源提取与映射规划（🔴 必须执行）
+
+根据课程课件，规划提取的图片如何映射到复习文档中：
 
 1. **识别课程所属科目类别**：
    - 数学类：微积分、线性代数、概率论、复变函数
@@ -165,186 +231,34 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
    - 工程类：机械、控制、土木、化工
    - 其他理工科科目
 
-2. **确定SVG类型**：
-   - 函数/信号波形图：各类函数曲线、序列、时域频域波形
-   - 几何/坐标图：坐标系、向量、空间几何、复平面、Z平面
-   - 系统/流程框图：输入输出流、算法流程、系统结构
-   - 电路/原理图：电路图、逻辑门、晶体管级示意图
-   - 数据结构图：树、图、链表、栈、队列
-   - 物理模型图：受力分析、场线、光路、热力学循环
-   - 对比示意图：变换前后、正确vs错误、方法对比
+2. **确定图片类型与映射位置**：
+   - 概念示意图 → 对应核心概念讲解处
+   - 公式推导图 → 对应推导步骤位置
+   - 对比分析图 → 对应对比段落
+   - 例题配图 → 对应题目下方
+   - 结果展示图 → 对应结果分析处
 
-3. **规划SVG数量**：每章至少生成5个SVG示意图
-4. **确定SVG位置**：将SVG放置在对应概念讲解之后、例题之前
-
-### 2.4.1 理工科通用SVG示意图模板库
-
-以下SVG模板可根据课程科目类型选择使用。所有SVG均使用标准HTML内联格式，放置在 `<div class="diagram-container">` 容器内。
-
-**SVG代码编写规范**（所有科目通用）：
-- 使用内联SVG代码，不引用外部文件
-- SVG尺寸：width="500" height="300"（根据内容调整）
-- 使用 `<g transform="translate(...)">` 调整坐标系
-- 文字标注使用 `<text>` 元素，字体大小12-14px
-- 所有SVG放在 `<div class="diagram-container">` 容器内
-- 每个SVG下方必须有图号和说明文字
-
-**颜色约定**：
-- 坐标轴/网格：#333，stroke-width: 1.5
-- 主曲线/主元素：#2563eb (蓝色)
-- 次要曲线/元素：#16a34a (绿色)
-- 高亮/重点：#dc2626 (红色)
-- 填充区域：rgba(37, 99, 235, 0.1)
-
----
-
-**模板1：通用坐标系函数曲线（数学/物理/工程通用）**
-```svg
-<div class="diagram-container">
-  <svg width="500" height="300" viewBox="0 0 500 300">
-    <defs>
-      <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
-      </marker>
-    </defs>
-    <g transform="translate(50, 250)">
-      <!-- 坐标轴 -->
-      <line x1="0" y1="0" x2="400" y2="0" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
-      <line x1="0" y1="50" x2="0" y2="-200" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
-      <!-- 网格线（可选） -->
-      <line x1="100" y1="0" x2="100" y2="-200" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="3,3"/>
-      <line x1="200" y1="0" x2="200" y2="-200" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="3,3"/>
-      <line x1="300" y1="0" x2="300" y2="-200" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="3,3"/>
-      <!-- 函数曲线（使用 polyline 或 path） -->
-      <polyline points="0,0 50,-30 100,-60 150,-90 200,-60 250,-30 300,0 350,-30 400,-60" 
-                fill="none" stroke="#2563eb" stroke-width="2"/>
-      <!-- 标注 -->
-      <text x="400" y="20" font-size="12">x</text>
-      <text x="-20" y="-180" font-size="12">f(x)</text>
-      <text x="0" y="15" text-anchor="middle" font-size="11">0</text>
-      <text x="200" y="15" text-anchor="middle" font-size="11">π</text>
-      <text x="400" y="15" text-anchor="middle" font-size="11">2π</text>
-    </g>
-  </svg>
-  <p style="text-align:center; font-size:0.85rem; color:#666; margin-top:0.5rem;">
-    图X.Y：[根据科目填写图名和说明]
-  </p>
-</div>
-```
-
-**模板2：通用系统/流程框图（全科目通用）**
-```svg
-<div class="diagram-container">
-  <svg width="500" height="200" viewBox="0 0 500 200">
-    <defs>
-      <marker id="arrow2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
-      </marker>
-    </defs>
-    <g transform="translate(30, 50)">
-      <!-- 模块1：输入 -->
-      <rect x="0" y="30" width="80" height="50" rx="5" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-      <text x="40" y="60" text-anchor="middle" font-size="13">输入</text>
-      <!-- 箭头1 -->
-      <line x1="80" y1="55" x2="130" y2="55" stroke="#333" stroke-width="1.5" marker-end="url(#arrow2)"/>
-      <!-- 模块2：处理 -->
-      <rect x="130" y="30" width="100" height="50" rx="5" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-      <text x="180" y="60" text-anchor="middle" font-size="13">处理</text>
-      <!-- 箭头2 -->
-      <line x1="230" y1="55" x2="280" y2="55" stroke="#333" stroke-width="1.5" marker-end="url(#arrow2)"/>
-      <!-- 模块3：输出 -->
-      <rect x="280" y="30" width="80" height="50" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-      <text x="320" y="60" text-anchor="middle" font-size="13">输出</text>
-      <!-- 反馈箭头（可选） -->
-      <path d="M 320 80 Q 320 110 180 110 Q 100 110 100 80" fill="none" stroke="#666" stroke-width="1" marker-end="url(#arrow2)"/>
-      <text x="200" y="125" text-anchor="middle" font-size="11">反馈</text>
-    </g>
-  </svg>
-  <p style="text-align:center; font-size:0.85rem; color:#666; margin-top:0.5rem;">
-    图X.Y：[根据科目填写图名和说明]
-  </p>
-</div>
-```
-
-**模板3：通用几何/向量图（数学/物理通用）**
-```svg
-<div class="diagram-container">
-  <svg width="400" height="400" viewBox="0 0 400 400">
-    <defs>
-      <marker id="arrow3" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
-      </marker>
-    </defs>
-    <g transform="translate(200, 200)">
-      <!-- 坐标轴 -->
-      <line x1="-150" y1="0" x2="150" y2="0" stroke="#333" stroke-width="1.5" marker-end="url(#arrow3)"/>
-      <line x1="0" y1="-150" x2="0" y2="150" stroke="#333" stroke-width="1.5" marker-end="url(#arrow3)"/>
-      <!-- 向量1 -->
-      <line x1="0" y1="0" x2="100" y2="-60" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow3)"/>
-      <text x="110" y="-65" font-size="12" fill="#2563eb">A</text>
-      <!-- 向量2 -->
-      <line x1="0" y1="0" x2="50" y2="100" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow3)"/>
-      <text x="55" y="110" font-size="12" fill="#16a34a">B</text>
-      <!-- 标注 -->
-      <text x="150" y="20" font-size="12">x</text>
-      <text x="10" y="-140" font-size="12">y</text>
-    </g>
-  </svg>
-  <p style="text-align:center; font-size:0.85rem; color:#666; margin-top:0.5rem;">
-    图X.Y：[根据科目填写图名和说明]
-  </p>
-</div>
-```
-
-**模板4：通用数据结构/算法图（计算机类通用）**
-```svg
-<div class="diagram-container">
-  <svg width="500" height="250" viewBox="0 0 500 250">
-    <g transform="translate(30, 30)">
-      <!-- 节点 -->
-      <circle cx="100" cy="30" r="25" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-      <text x="100" y="35" text-anchor="middle" font-size="14">根</text>
-      
-      <circle cx="50" cy="100" r="22" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-      <text x="50" y="105" text-anchor="middle" font-size="12">左</text>
-      
-      <circle cx="150" cy="100" r="22" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-      <text x="150" y="105" text-anchor="middle" font-size="12">右</text>
-      
-      <circle cx="20" cy="170" r="18" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-      <circle cx="80" cy="170" r="18" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-      <circle cx="120" cy="170" r="18" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-      <circle cx="180" cy="170" r="18" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-      
-      <!-- 连接线 -->
-      <line x1="85" y1="50" x2="60" y2="80" stroke="#333" stroke-width="1.5"/>
-      <line x1="115" y1="50" x2="140" y2="80" stroke="#333" stroke-width="1.5"/>
-      <line x1="40" y1="120" x2="28" y2="152" stroke="#333" stroke-width="1.5"/>
-      <line x1="60" y1="120" x2="72" y2="152" stroke="#333" stroke-width="1.5"/>
-      <line x1="140" y1="120" x2="128" y2="152" stroke="#333" stroke-width="1.5"/>
-      <line x1="160" y1="120" x2="172" y2="152" stroke="#333" stroke-width="1.5"/>
-    </g>
-  </svg>
-  <p style="text-align:center; font-size:0.85rem; color:#666; margin-top:0.5rem;">
-    图X.Y：[根据科目填写图名和说明]
-  </p>
-</div>
-```
-
----
-
-**科目特定SVG生成指南**：
-- **数学类**：优先生成函数曲线、积分面积、向量空间、级数展开图
-- **物理类**：优先生成受力分析图、光路图、场线分布图、能量转换图
-- **电路类**：优先生成电路图、时序图、波特图、状态转移图
-- **计算机类**：优先生成数据结构图、算法流程图、状态机图、网络拓扑图
+3. **规划图片数量**：每章至少引用8-10张课件原图
+4. **确定图片位置**：将图片放置在对应概念讲解之后、例题之前
+5. **识别图片缺失**：标记课件中没有对应图片的核心概念，考虑是否需要简单SVG后备
 
 ### 2.5 处理纯图片课件（扫描版PDF/图片型PPTX）
+
+**🔴 API兼容性重要提醒：禁止直接将原始文档文件（PDF/PPTX/DOCX）传给API进行内容识别**
+
+大多数API不支持 `document` 类型的输入参数，仅支持 `text`、`image`、`tool_use` 等类型。直接传递文档文件会导致以下错误：
+> `API Error: 400 The parameter messages.content.type specified in the request are not valid: invalid value: document`
+
+**正确的处理流程**：始终通过 `extract_course_materials.py` 脚本提取文本和图片，仅对提取出的**单个图片文件**进行视觉识别。
+
+---
 
 若脚本报告有纯图片文件，按以下 **降级策略** 处理：
 
 **Level 1：尝试AI助手自带视觉能力**
-直接读取原始PDF/PPTX/DOCX文件中的图片进行内容识别——大多数现代AI助手模型具备多模态视觉能力，可以直接从图片中读取公式和文字。
+✅ **仅读取 `extracted_images/` 目录中提取出的单个图片文件**（PNG/JPG等）进行内容识别。大多数现代AI助手模型具备多模态视觉能力，可以直接从图片中读取公式和文字。
+
+❌ **禁止直接读取原始PDF/PPTX/DOCX文件进行识别**——这会触发API的 `document` 类型错误。
 
 **Level 2：尝试MCP视觉服务器**
 如果当前模型不支持视觉，检查是否有可用的MCP视觉工具（如 `mcp__MiniMax__understand_image` 或类似工具）。通过 `ListMcpResourcesTool` 查看可用MCP资源。
@@ -355,25 +269,17 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 - **方案B**：安装MCP视觉服务器（向用户推荐可用的MCP视觉服务器并帮助配置）
 - **方案C**：使用OCR工具预处理（推荐 Tesseract + pdf2image：`pip install pytesseract pdf2image`）
 
-对于其他需要识图的环节（如浏览提取出的图片），也遵循同样的三级降级策略。
+对于其他需要识图的环节（如浏览提取出的图片进行4.4.1第二步的图片内容识别验证），也遵循同样的原则：**只读取单个图片文件，不直接读取原始文档**。
 
-### 2.5 处理纯图片课件（扫描版PDF/图片型PPTX）
+---
 
-若脚本报告有纯图片文件，按以下 **降级策略** 处理：
+**纯图片课件特殊处理流程**：
 
-**Level 1：尝试AI助手自带视觉能力**
-直接读取原始PDF/PPTX/DOCX文件中的图片进行内容识别——大多数现代AI助手模型具备多模态视觉能力，可以直接从图片中读取公式和文字。
-
-**Level 2：尝试MCP视觉服务器**
-如果当前模型不支持视觉，检查是否有可用的MCP视觉工具（如 `mcp__MiniMax__understand_image` 或类似工具）。通过 `ListMcpResourcesTool` 查看可用MCP资源。
-
-**Level 3：引导用户解决**
-如果以上均不可用，告知用户当前环境无法识别图片内容，引导用户：
-- **方案A**：切换到支持视觉的模型（如 Claude Opus 4、GPT-4V、Gemini Pro Vision）
-- **方案B**：安装MCP视觉服务器（向用户推荐可用的MCP视觉服务器并帮助配置）
-- **方案C**：使用OCR工具预处理（推荐 Tesseract + pdf2image：`pip install pytesseract pdf2image`）
-
-对于其他需要识图的环节（如浏览提取出的图片），也遵循同样的三级降级策略。
+如果 `extract_course_materials.py` 报告某文件为纯图片型（文本提取率 < 5%）：
+1. 浏览 `extracted_images/` 目录中该文件对应的所有提取图片
+2. **逐张读取单个图片文件**（而非整个文档）进行内容识别
+3. 提取的图片既是文本来源（通过视觉OCR），也是文档配图资源
+4. 在HTML中标记该章节内容为"基于图片视觉识别生成"，提醒用户验证准确性
 
 ---
 
@@ -468,7 +374,7 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂的高
 6. 哪些图片是关键图表？（必须引用到文档中）
 7. 哪些公式在提取后不完整？（逐一核对）
 8. 哪些推导步骤被省略了？（必须补全）
-9. 哪些概念需要SVG示意图辅助理解？（课件原图不足或缺失的部分）
+9. 识别课件原图不足或缺失的核心概念，评估是否需要简单SVG作为后备补充。
 
 ### 4.2 文档结构（必须包含8个部分）
 
@@ -944,6 +850,16 @@ window.MathJax = {
     font-size: 0.88rem;
   }
 
+  /* 🔴 闪卡点击事件防护：确保内部元素不阻断点击事件冒泡 */
+  .flashcard-front *, .flashcard-back * {
+    pointer-events: none;
+    user-select: none;
+  }
+  .flashcard-front, .flashcard-back {
+    cursor: pointer;
+    user-select: none;
+  }
+
   /* ===== Interactive: Progress Tracker ===== */
   .progress-tracker {
     margin-bottom: 1rem;
@@ -1108,9 +1024,10 @@ window.MathJax = {
 <h2 id="ch0">第〇章：开始之前——课程核心思维</h2>
 
 <h3>📌 [课程]的一条主线</h3>
-<p>用SVG流程图展示课程核心主线：</p>
+<p>（优先使用课件中的系统架构图；如课件无图，可考虑用简单SVG流程图补充）</p>
 <div class="diagram-container">
-  <!-- 内联SVG流程图 —— 由你生成 -->
+  <!-- 优先使用课件提取的图片；仅在缺失时考虑简单SVG补充 -->
+  <!-- <img src="extracted_images/[课件名]_arch.png" alt="[课程]核心架构"> -->
 </div>
 
 <h3>🔑 最重要的关系</h3>
@@ -1142,6 +1059,8 @@ window.MathJax = {
 
     <!-- 术语闪卡 -->
     <!-- 🔴 闪卡禁止使用内联onclick（如 onclick="..."），翻转功能由JS事件委托统一处理 -->
+    <!-- 🔴 双重翻转bug检查：HTML中不得有任何 onclick="classList.toggle('flipped')" -->
+    <!-- 🔴 原因：内联onclick + 事件委托会导致点击一次翻转两次，视觉上"无法翻转" -->
     <div class="flashcard-grid">
       <div class="flashcard">
         <div class="flashcard-inner">
@@ -1215,9 +1134,9 @@ window.MathJax = {
   </div>
 </details>
 
-<!-- 如果需要SVG辅助解释推导过程，生成内联SVG -->
+<!-- 推导可视化：优先使用课件中的推导示意图，无图时才考虑简单SVG补充 -->
 <div class="diagram-container">
-  <!-- 推导步骤的可视化SVG —— 由你生成 -->
+  <!-- <img src="extracted_images/[课件名]_derive.png" alt="推导步骤示意图"> -->
 </div>
 
 <div class="callout callout-example">
@@ -1336,9 +1255,26 @@ document.querySelectorAll('.tab-container').forEach(function(container) {
 });
 
 // === Flashcard Flip (event delegation — 禁止在HTML中使用内联onclick) ===
+// 🔴 双重翻转防护：这是唯一的翻转触发点，HTML中绝对不能添加 onclick
+// 🔴 常见bug：内联 onclick + 此处事件委托 = 点击一次翻转两次 = 视觉上"没翻转"
 document.addEventListener('click', function(e) {
+  // 防护1：排除闪卡内部的可交互元素，避免误触发
+  if (e.target.tagName === 'A' || e.target.tagName === 'INPUT' || 
+      e.target.tagName === 'BUTTON' || e.target.closest('a, button, details')) {
+    return;
+  }
+  
   var card = e.target.closest('.flashcard');
   if (card) {
+    // 防护2：阻止事件冒泡，防止触发其他监听器导致双重翻转
+    e.stopPropagation();
+    
+    // 防护3：状态检查防止连续快速点击
+    if (card.dataset.flipping) return;
+    card.dataset.flipping = '1';
+    setTimeout(function() { delete card.dataset.flipping; }, 300);
+    
+    // 执行翻转
     card.classList.toggle('flipped');
   }
 });
@@ -1401,9 +1337,42 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 </html>
 ```
 
-### 4.4 图片使用策略
+### 4.4 图片使用策略（🔴 完全使用课件提取的图片）
 
-#### 4.4.1 课件原图引用
+**核心原则**：100% 使用课程课件中提取的原始图片，不生成替代的SVG示意图。图片是复习文档的核心组成部分，必须实现图文并茂。
+
+#### 4.4.1 图片智能选择与交叉验证
+
+**第一步：基于文本上下文的图片匹配**
+
+1. 定位提取文本中的所有 `[图片: xxx.png]` 标记
+2. 提取每张图片标记前后各3段文字作为上下文
+3. 根据上下文内容判断图片类型：
+   - 🔵 **概念示意图**：上下文含"如图所示"、"下图展示" → 嵌入到对应概念讲解处
+   - 🟢 **公式推导图**：上下文含推导步骤 → 嵌入到对应推导位置
+   - 🟡 **对比分析图**：上下文含"对比"、"区别"、"vs" → 嵌入到对比段落
+   - 🔴 **例题配图**：上下文含例题、题目 → 嵌入到题目下方
+   - 🟣 **结果展示图**：上下文含计算结果、实验数据 → 嵌入到结果分析处
+
+**第二步：基于图片内容的识别验证（三级降级策略）**
+
+**🔴 API兼容性提醒：仅读取 `extracted_images/` 中的单个图片文件，禁止直接读取原始文档**
+
+| 级别 | 方法 | 操作 |
+|------|------|------|
+| **Level 1** | AI模型视觉能力 | ✅ 直接读取 `extracted_images/` 目录中的**单个图片文件**（PNG/JPG等），生成图片的文字描述和关键词标签 |
+| **Level 2** | MCP视觉服务器 | 如模型不支持视觉，使用MCP服务器的图片理解工具（如 `mcp__MiniMax__understand_image`），传入单个图片文件路径 |
+| **Level 3** | 用户引导确认 | 如以上均不可用，列出候选图片让用户确认对应关系 |
+
+**错误示例规避**：不要尝试直接读取 `课件.pdf` 或 `课件.pptx` 来识别图片，这会触发API的 `document` 类型错误。始终只读取已提取的单个图片文件。
+
+**第三步：交叉验证匹配结果**
+- 将上下文匹配结果与图片内容识别结果进行对比
+- 如果一致：高置信度嵌入
+- 如果不一致：重新分析或询问用户确认
+- 确保嵌入的图片与上下文在语义上高度相关
+
+#### 4.4.2 课件原图引用规范
 
 在HTML中通过 `<img>` 标签引用提取的图片，使用相对路径：
 
@@ -1414,21 +1383,29 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 </figure>
 ```
 
-**图片格式说明**：提取脚本会自动过滤浏览器不兼容的图片格式（EMF/WMF），仅保留 PNG、JPG、GIF、BMP、WebP 等 Web 兼容格式。如果提取文本中出现 `[图片: xxx.emf]` 标记但对应文件不存在，说明该图片已被自动跳过——此时可考虑用 SVG 示意图替代。
+**图片格式说明**：提取脚本会自动过滤浏览器不兼容的图片格式（EMF/WMF），仅保留 PNG、JPG、GIF、BMP、WebP 等 Web 兼容格式。
 
-**🔴 图片嵌入规范（每章至少嵌入5张图片）**
+**🔴 图片嵌入强制规范（每章至少嵌入8-10张图片）**
 
-**图片选择原则**（按优先级）：
+**数量要求**：
+- 每章至少 **8-10 张** 课件原图（原要求5张的增强版）
+- 每个核心概念（📌标记）**至少1张**配图
+- 每个关键推导至少1张过程图
+- 每道例题至少1张题目或结果图
+
+**图片选择优先级**：
 1. 核心概念的示意图（系统框图、信号流程图、物理模型图）
 2. 关键公式的图解推导（几何解释、坐标变换示意图）
-3. 对比图（正确vs错误、变换前vs后）
-4. 解题流程图（算法步骤图、决策树）
-5. 例题中的配图（题目原图、结果展示图）
+3. 对比图（正确vs错误、变换前vs后、方法Avs方法B）
+4. 解题流程图（算法步骤图、决策树、判定逻辑）
+5. 例题中的配图（题目原图、中间过程、结果展示）
+6. 实验数据图（波形图、频谱图、散点图、曲线）
 
 **图片嵌入方法**：
 1. 在对应概念的讲解位置，用 `<figure>` 包裹图片
 2. `<figcaption>` 必须包含：图号+图片说明+来源（课件文件名）
-3. **图片说明要结合上下文内容**，而非仅描述图片本身
+3. **图片说明必须结合上下文内容**，而非仅描述图片本身
+4. 图片之后必须有文字引用和解释（如"如上图所示..."）
 
 **上下文结合示例**：
 如果图片标记出现在"傅里叶变换的时域-频域对应关系"段落之后：
@@ -1438,19 +1415,45 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
   <figcaption>图3.2：矩形脉冲的频谱展示了时域压缩对应频域扩展的特性
   （来源：chapter3_频域分析.pdf 第10页）</figcaption>
 </figure>
-<p>如上图所示，当矩形脉冲的宽度从 2τ 缩小到 τ 时...</p>
+<p>如上图所示，当矩形脉冲的宽度从 2τ 缩小到 τ 时，频谱主瓣宽度从 1/τ 扩展到 2/τ，
+这体现了傅里叶变换的尺度变换特性——时域越窄，频域越宽。</p>
 ```
 
 **不引用的图片类型**：
-- 纯装饰性图片
-- 与文字完全重复的简单公式截图
-- 分辨率过低无法辨认的图片
+- 纯装饰性图片（无实质教学内容的Logo、边框）
+- 与文字完全重复的简单公式截图（可用LaTeX替代）
+- 分辨率过低无法辨认的图片（< 200x200）
+- 严重变形、裁剪不全的损坏图片
 
-**图片内嵌（后处理）**：HTML生成完成后，运行 `python embed_images.py <文件名>.html` 将相对路径图片转换为 base64 data URI，生成完全自包含的 HTML 文件，方便分享和打印。
+#### 4.4.3 图片内嵌（后处理）
 
-#### 4.4.2 SVG示意图生成（🔴 必须使用，不再引用课件图片）
+HTML生成完成后，必须运行以下命令将相对路径图片转换为 base64 data URI：
 
-**所有示意图均用手写代码生成内联SVG，不引用课件提取的图片。**
+```bash
+python embed_images.py 复习文档.html --in-place
+```
+
+这将生成**完全自包含的单个HTML文件**，所有图片都内嵌在文件中，方便：
+- ✅ 离线查看（无需网络、无需图片文件夹）
+- ✅ 一键分享（单个文件即可）
+- ✅ 打印导出（PDF导出时图片完整）
+- ✅ 版本管理（单一文件追踪）
+
+**embed_images.py 功能特性**：
+- 自动处理 `<img src>`、`<source srcset>`、SVG `<image href>`、favicon
+- 四级路径解析策略：绝对路径→相对子目录→扁平文件名→递归搜索
+- 魔数校验确保图片文件有效可读
+- 相同图片多次引用时缓存复用，避免重复编码
+- 支持批量处理整个 extracted_images 目录
+
+#### 4.4.4 SVG示意图（仅作为课件图片缺失的最后后备）
+
+**只有当以下情况时才生成SVG示意图作为补充**：
+1. 课件中完全没有对应概念的图片
+2. 提取的图片质量过低无法使用
+3. 概念需要动画化或交互式的可视化展示
+
+**SVG仅作为后备补充，不作为主要图片来源**。
 
 **SVG生成原则**（按优先级）：
 1. 核心概念的可视化示意图（信号波形、Z平面极点分布、幅频响应）
@@ -1467,66 +1470,7 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 - 所有SVG放在 `<div class="diagram-container">` 容器内
 - 每个SVG下方必须有图号和说明文字
 
-**附加SVG模板：工程类专用（🔴 直接复制使用）**：
-
-```svg
-<!-- 模板5：电路原理图模板（电路/电子类专用） -->
-<div class="diagram-container">
-  <svg width="500" height="250" viewBox="0 0 500 250">
-    <g transform="translate(50, 50)">
-      <!-- 电压源 -->
-      <circle cx="0" cy="50" r="15" fill="none" stroke="#333" stroke-width="2"/>
-      <text x="0" y="55" text-anchor="middle" font-size="16">V</text>
-      <!-- 导线 -->
-      <line x1="0" y1="35" x2="0" y2="0" stroke="#333" stroke-width="2"/>
-      <line x1="0" y1="0" x2="200" y2="0" stroke="#333" stroke-width="2"/>
-      <line x1="200" y1="0" x2="200" y2="35" stroke="#333" stroke-width="2"/>
-      <!-- 电阻符号 -->
-      <rect x="180" y="35" width="40" height="30" fill="none" stroke="#333" stroke-width="2"/>
-      <text x="200" y="80" text-anchor="middle" font-size="12">R</text>
-      <!-- 更多导线 -->
-      <line x1="200" y1="65" x2="200" y2="100" stroke="#333" stroke-width="2"/>
-      <line x1="200" y1="100" x2="0" y2="100" stroke="#333" stroke-width="2"/>
-      <line x1="0" y1="100" x2="0" y2="65" stroke="#333" stroke-width="2"/>
-      <!-- 接地符号 -->
-      <line x1="100" y1="100" x2="100" y2="115" stroke="#333" stroke-width="2"/>
-      <line x1="85" y1="115" x2="115" y2="115" stroke="#333" stroke-width="2"/>
-      <line x1="90" y1="125" x2="110" y2="125" stroke="#333" stroke-width="2"/>
-    </g>
-  </svg>
-  <p style="text-align:center; font-size:0.85rem; color:#666; margin-top:0.5rem;">
-    图 N.M：[根据科目填写图名和说明]
-  </p>
-</div>
-
-<!-- 模板6：时序/波形图模板（信号/控制类专用） -->
-<div class="diagram-container">
-  <svg width="500" height="200" viewBox="0 0 500 200">
-    <g transform="translate(50, 30)">
-      <!-- 时间轴 -->
-      <line x1="0" y1="150" x2="400" y2="150" stroke="#333" stroke-width="1.5"/>
-      <text x="400" y="165" font-size="12">t</text>
-      <!-- 波形1：方波 -->
-      <polyline points="0,50 50,50 50,100 100,100 100,50 150,50 150,100 200,100 200,50" 
-                fill="none" stroke="#2563eb" stroke-width="2"/>
-      <text x="-10" y="75" font-size="11" text-anchor="end">CH1</text>
-      <!-- 波形2：三角波 -->
-      <polyline points="0,120 50,80 100,120 150,80 200,120" 
-                fill="none" stroke="#16a34a" stroke-width="2"/>
-      <text x="-10" y="105" font-size="11" text-anchor="end">CH2</text>
-    </g>
-  </svg>
-  <p style="text-align:center; font-size:0.85rem; color:#666; margin-top:0.5rem;">
-    图 N.M：[根据科目填写图名和说明]
-  </p>
-</div>
-```
-
----
-
-**重要提示**：生成SVG时，请根据实际课程内容调整模板，不要局限于上述示例。重点是准确可视化核心概念，帮助学习者理解。
-
-⚠️ **重要**：不再使用 `<figure>` + `<img src="extracted_images/...">` 方式引用课件图片。所有可视化内容必须用上述SVG模板风格手写代码生成。
+**注意**：SVG仅作为课件图片缺失时的最后后备手段，优先使用课件提取的原图。仅在确有必要时生成极少量、简单的示意图。
 
 ### 4.5 公式还原与推导补全
 
@@ -1615,8 +1559,8 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 5. **🔴 推导详细度**：所有被跳过的推导步骤已补全，每步有"为什么"的解释，至少5步
 6. **🔴 数学符号说明**：所有数学符号第一次出现时必须说明含义和单位
 7. **分层解释**：每个核心概念包含 定义→配图→物理意义→数学拆解→适用条件→推导→例题→关联
-8. **🔴 图文并茂**：每章至少5张课件原图（原上下文结合），每个核心概念至少1张示意图
-9. **SVG补充**：课件原图不足处，用SVG示意图补充
+8. **🔴 图文并茂**：每章至少8-10张课件原图，每个核心概念至少1张配图。图片说明必须结合上下文内容。
+9. **SVG仅作后备**：课件原图不足或缺失时，可用简单SVG补充，但不作为主要图片来源。
 10. **🔴 大题要求**：每章至少1道综合性计算大题，包含考点分析、解题策略、详细步骤、验证方法、易错点
 11. **交互式学习**：每章必须有选项卡视图、可折叠推导、练习测验、术语闪卡
 12. **深度脚手架**：可层层深入——frontmatter→第0章→闪卡快览→选项卡切换→精读→测验→附录
@@ -1629,9 +1573,9 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 
 **数学公式密集课程**：优先公式准确性，核心定理推导100%补全，附录A格外详尽。
 
-**概念记忆为主课程**：增加对比表格和SVG对比图，多用记忆口诀和思维导图SVG。
+**概念记忆为主课程**：增加对比表格，课件原图不足时可用简单SVG对比图补充，多用记忆口诀。
 
-**编程/实践类课程**：解题模板包含代码块，附录B含代码模板，SVG侧重架构图和流程图。
+**编程/实践类课程**：解题模板包含代码块，附录B含代码模板，优先使用课件中的架构图和流程图。
 
 **课件质量差/内容缺失**：如实标注不完整章节，不编造内容。缺失处标注 `<!-- 内容缺失：课件未涵盖 -->`。
 
@@ -1648,9 +1592,11 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 - [ ] 逐一核对每个公式的完整性——无断裂、符号丢失、上下标错位
 - [ ] 课件中所有被跳过的推导均已补全，每步有文字解释
 - [ ] 图标系统（📌🔑📐✏️💡📝🃏）使用一致，对应的CSS类正确
-- [ ] 每章至少3张课件原图，图片路径正确可访问
-- [ ] 核心概念（📌标记）至少配1张示意图（原图或SVG）
-- [ ] SVG示意图质量合格：配色一致、标签清晰、语义正确
+- [ ] 🔴 每章至少8-10张课件原图，图片路径正确可访问
+- [ ] 🔴 每个核心概念（📌标记）100%配有对应图片
+- [ ] 🔴 所有图片说明文字与上下文内容结合（不只是"如图所示"）
+- [ ] 🔴 已运行 embed_images.py 将所有图片base64内嵌到HTML
+- [ ] 🔴 SVG仅作为课件图片缺失时的最后后备，优先使用提取的课件图片
 - [ ] 关键术语均为中英双语
 - [ ] 附录A按主题分类，包含课程所有核心公式
 - [ ] 附录B至少3种解题模板
@@ -1662,7 +1608,10 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 - [ ] 移动端和打印样式均可用
 - [ ] 每章推导步骤使用 `<details class="derive-steps">` 可折叠，每步有"为什么"解释
 - [ ] 每章有选项卡布局（⚡快速复习 + 📖详细讲解）
-- [ ] 每章快速复习面板有3-5张 flashcard 术语闪卡（JavaScript事件绑定正常）
+- [ ] 🔴 每章快速复习面板有3-5张 flashcard 术语闪卡
+- [ ] 🔴 搜索HTML确认：所有闪卡DIV中没有内联 onclick 属性
+- [ ] 🔴 搜索HTML确认：没有 onclick="...toggle('flipped')..." 代码
+- [ ] 🔴 实际点击测试：点击闪卡正面可以正确翻转到背面，再次点击翻转回来
 - [ ] 每章有2-4道练习题的 `.quiz-section`
 - [ ] 侧边栏 ToC 有进度追踪 checkbox + 进度条
 - [ ] 主内容区顶部有搜索栏，可搜索所有内容块（阅读指南、目录、章节、附录）
@@ -1671,7 +1620,7 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
 - [ ] 自主 agent 生成时包含 autonomous-banner（如适用）
 - [ ] 🔴 每个核心概念包含5层讲解：定义→配图→物理意义→数学拆解→适用条件
 - [ ] 🔴 每个数学符号第一次出现时说明含义和单位
-- [ ] 🔴 每章至少5张课件原图，图片说明结合上下文内容
+- [ ] 🔴 每章至少8-10张课件原图，图片说明必须结合上下文内容
 - [ ] 🔴 每章至少1道综合性计算大题，包含考点分析、解题策略、验证方法、易错点
 - [ ] 🔴 所有公式说明适用条件和限制，列出常见误用场景
 

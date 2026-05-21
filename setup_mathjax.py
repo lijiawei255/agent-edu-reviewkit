@@ -5,6 +5,7 @@
 下载 MathJax es5 目录到 ./mathjax/，使生成的复习文档无需联网即可渲染数学公式。
 """
 
+import io
 import os
 import sys
 import shutil
@@ -36,7 +37,7 @@ def download(url, timeout=60):
 def extract_es5(tarball_data, url):
     """从 tarball 中提取 es5/ 目录，返回源目录路径"""
     src_root = SOURCE_ROOTS.get(url)
-    with tarfile.open(fileobj=__import__('io').BytesIO(tarball_data), mode="r:gz") as tf:
+    with tarfile.open(fileobj=io.BytesIO(tarball_data), mode="r:gz") as tf:
         tmpdir = tempfile.mkdtemp()
         tf.extractall(tmpdir)
         src_es5 = os.path.join(tmpdir, src_root)
