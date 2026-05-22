@@ -143,6 +143,16 @@ git clone https://github.com/lijiawei255/agent-edu-reviewkit.git
 cd agent-edu-reviewkit
 ```
 
+**Option C (Returning users — one-click update):**
+
+If you previously cloned the project with `git clone`, simply run:
+
+```bash
+python update.py
+```
+
+The script will check for remote updates, show new commits, and sync to the latest version. No need to re-clone.
+
 ### Step 2: Install Python Dependencies
 
 Open a terminal (PowerShell or Command Prompt on Windows), navigate to the project folder, and run:

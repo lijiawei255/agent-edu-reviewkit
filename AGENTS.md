@@ -135,3 +135,16 @@ OpenClaw 和 Hermes 是 Claw 类自主化智能体，通过消息应用（WhatsA
 3. 待验证项清单
 4. 不完整章节列表（如有）
 5. 生成的 `exam-scope-template.json` 路径
+
+---
+
+### 精简模式适配（≤200k 上下文模型）
+
+自治模式下的精简模式（`[CTX_MODE: COMPACT]`）适配：
+
+1. **跳过 Phase 0 交互**：自治模式无法询问用户模型信息。改为从 `exam-scope.json` 中读取 `context_mode` 字段（值为 `"standard"` 或 `"compact"`）。如果字段不存在，默认为 `"standard"`。
+2. **分批读取**：与交互模式相同——逐章读取提取文本，每章生成≤200字摘要。
+3. **压缩检查点**：在每个 Phase 完成后执行压缩，格式与交互模式相同。
+4. **分阶段生成**：每个 Python 脚本仅生成 1 章。
+
+> ⚠️ 自治模式下精简模式的触发依赖 `exam-scope.json` 配置。未在配置中指定 `context_mode` 时，默认使用标准模式。
