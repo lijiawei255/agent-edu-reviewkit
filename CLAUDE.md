@@ -16,6 +16,7 @@ agent-edu-reviewkit/
 ├── extract_course_materials.py         # Python script: text + image extraction
 ├── embed_images.py                     # Python script: base64 image embedding
 ├── setup_mathjax.py                    # Python script: offline MathJax v3 download
+├── update.py                           # Python script: one-click update for git clone users
 ├── opencode.json                       # OpenCode custom agent definition
 ├── exam-scope-template.json            # Template for exam scope config (autonomous agents)
 ├── skills/
@@ -32,6 +33,7 @@ agent-edu-reviewkit/
 
 ## How the skill works
 
+0. **Phase 0 — Context Mode Detection**: Agent asks user for model name and context window size. Determines run mode: 🟢 Standard (>200k) or 🟡 Compact (≤200k). Compact mode enables batch reading, proactive compression, and staged checkpoints. 1M+ models always use Standard mode with zero impact.
 1. **Phase 1 — Scope**: Agent scans courseware files, confirms exam scope with user. Autonomous agents (OpenClaw/Hermes) read `exam-scope.json` or infer scope from filenames.
 2. **Phase 2 — Extraction**: User runs `extract_course_materials.py` to extract text + images. Agent reads all output. Pure-image files (scan PDFs) are handled via vision fallback.
 3. **Phase 3 — Research**: Agent optionally searches GitHub/Wikipedia for supplementary references.
