@@ -143,6 +143,16 @@ git clone https://github.com/lijiawei255/agent-edu-reviewkit.git
 cd agent-edu-reviewkit
 ```
 
+**方式 C（已 clone 过的用户——一键更新到最新版）：**
+
+如果你之前已经用 `git clone` 下载过项目，只需在项目目录下运行：
+
+```bash
+python update.py
+```
+
+脚本会自动检查远程更新、展示新版本内容并同步到最新。无需重新 clone。
+
 ### 第 2 步：安装 Python 依赖
 
 打开终端（Windows 上为 PowerShell 或命令提示符），进入项目目录，运行：
