@@ -237,6 +237,11 @@ If the image is a color gradient, decorative bar, or section divider
 
 搜索GitHub/Wikipedia补充对核心概念的理解。**课件内容始终是主，外部资料仅作辅助**。所有外部来源标注出处。
 
+> 📦 **精简模式（≤200k）— 压缩检查点 ②（Phase 3 完成后）：**
+> 1. 将补充调研内容压缩为"补充要点列表"（≤100字），仅保留核心补充概念和来源链接
+> 2. 如果 Phase 3 未执行，跳过此检查点
+> 3. 向用户报告："补充调研压缩完成。"
+
 ---
 
 ## Phase 4：生成HTML复习文档
