@@ -5,8 +5,13 @@
 
 使用方法:
   1. 直接运行默认配置: python extract_course_materials.py
+     （自动检测 课程资料/ 下的第一个子文件夹，输出到 复习文档输出/<课程名>/）
   2. 指定目录运行: python extract_course_materials.py --course-dir "课件目录" --output-dir "输出目录"
   3. 为多模态模型生成整页截图: python extract_course_materials.py --course-dir "课件目录" --output-dir "输出目录" --render-pages
+
+项目文件夹结构:
+  课程资料/<课程名>/   ← 将课件放入此处，技能自动发现
+  复习文档输出/<课程名>/ ← 提取结果和复习文档输出位置
 """
 
 import argparse
@@ -64,9 +69,59 @@ def _parse_args():
 # ============================================================
 _args = _parse_args()
 
-课件目录 = _args.course_dir or r"课件"               # 课件所在目录路径
-if _args.output_dir:
-    输出根目录 = Path(_args.output_dir)
+
+def _auto_detect_course_dir():
+    """自动检测课程资料文件夹。
+    如果 课程资料/ 目录存在且有子文件夹，返回第一个子文件夹的路径。
+    否则返回 None。
+    """
+    课程资料根 = Path("课程资料")
+    if 课程资料根.is_dir():
+        子目录 = sorted([
+            d for d in 课程资料根.iterdir()
+            if d.is_dir() and not d.name.startswith('.')
+        ])
+        if 子目录:
+            return str(子目录[0])
+    return None
+
+
+def _resolve_course_dir():
+    """解析课件目录：命令行参数 > 自动检测 > 默认值"""
+    if _args.course_dir:
+        return _args.course_dir
+    auto = _auto_detect_course_dir()
+    if auto:
+        print(f"📂 自动检测到课程资料: {auto}")
+        return auto
+    return r"课件"
+
+
+课件目录 = _resolve_course_dir()
+
+
+def _resolve_output_dir():
+    """解析输出目录。
+    如果课件目录在 课程资料/ 下，默认输出到 复习文档输出/<课程名>/；
+    否则沿用命令行参数或默认值。
+    """
+    if _args.output_dir:
+        return Path(_args.output_dir), True
+    # 检测是否使用了 课程资料/ 下的子目录
+    课程路径 = Path(课件目录).resolve()
+    课程资料根 = Path("课程资料").resolve()
+    try:
+        课程路径.relative_to(课程资料根)
+        # 课件在 课程资料/ 下 → 输出到 复习文档输出/<课程名>/
+        return Path("复习文档输出") / Path(课件目录).name, True
+    except ValueError:
+        pass
+    return None, False
+
+
+输出根目录, _has_auto_output = _resolve_output_dir()
+
+if _has_auto_output and 输出根目录 is not None:
     文本输出目录 = str(Path(_args.text_output_dir) if _args.text_output_dir else 输出根目录 / "extracted_text")
     图片输出目录 = str(Path(_args.image_output_dir) if _args.image_output_dir else 输出根目录 / "extracted_images")
     页面输出目录 = str(Path(_args.page_output_dir) if _args.page_output_dir else 输出根目录 / "page_images")

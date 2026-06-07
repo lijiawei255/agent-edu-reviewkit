@@ -84,9 +84,35 @@ def main():
             print(f"   {line}")
         if status.count("\n") > 9:
             print(f"   ... 共 {len(status.split(chr(10)))} 个文件")
-        print("   建议先手动处理: git stash 暂存修改，或 git checkout . 放弃修改")
-        print("   更新已取消")
-        sys.exit(0)
+        print()
+        print("   请选择处理方式：")
+        print("   [1] git stash 暂存修改 → 更新 → 恢复修改（推荐）")
+        print("   [2] 放弃本地修改，直接更新")
+        print("   [3] 取消更新")
+        ans = input("   请输入选项 (1/2/3): ").strip()
+        if ans == "1":
+            print("   📦 正在暂存本地修改...")
+            ok_stash, _, err_stash = run_git("stash", "push", "-m", "update.py 自动暂存（更新前）")
+            if not ok_stash:
+                print(f"   ❌ 暂存失败: {err_stash}")
+                sys.exit(1)
+            print("   ✅ 本地修改已暂存")
+            _stashed = True
+        elif ans == "2":
+            print("   🗑️  正在放弃本地修改...")
+            ok_co, _, err_co = run_git("checkout", ".")
+            if not ok_co:
+                print(f"   ❌ 放弃修改失败: {err_co}")
+                sys.exit(1)
+            # 同时清理未跟踪的文件
+            run_git("clean", "-fd")
+            print("   ✅ 本地修改已放弃")
+            _stashed = False
+        else:
+            print("   更新已取消")
+            sys.exit(0)
+    else:
+        _stashed = False
 
     # 2. 获取远程最新状态
     print("🔍 正在检查更新...")
@@ -141,10 +167,46 @@ def main():
     else:
         print("✅ 更新成功！")
 
-    # 检查 requirements.txt 是否变更
+    # 恢复暂存的本地修改
+    if _stashed:
+        print("📦 正在恢复本地修改...")
+        ok_pop, _, err_pop = run_git("stash", "pop")
+        if ok_pop:
+            print("   ✅ 本地修改已恢复")
+        else:
+            print(f"   ⚠️  恢复修改时出现冲突: {err_pop}")
+            print("   你的修改保存在 git stash 中，请手动处理: git stash pop")
+
+    # 确认课程资料和输出文件夹不受影响
+    print()
+    if os.path.isdir("课程资料") or os.path.isdir("复习文档输出"):
+        print("🔒 `课程资料/` 和 `复习文档输出/` 中的内容完好无损，不受更新影响。")
+
+    # 检查关键文件变更
     ok, diff, _ = run_git("diff", f"{local_hash}..{new_hash if ok else remote_hash}", "--name-only")
-    if ok and "requirements.txt" in diff:
-        print("📋 requirements.txt 已更新，建议运行: pip install -r requirements.txt")
+    if ok and diff:
+        changed = diff.split("\n")
+        # 检查依赖
+        if "requirements.txt" in changed:
+            print("📋 requirements.txt 已更新，建议运行: pip install -r requirements.txt")
+        # 检查 Python 脚本
+        py_changed = [f for f in changed if f.endswith('.py') and f not in ('requirements.txt',)]
+        if py_changed:
+            print("🐍 以下 Python 脚本已更新:")
+            for f in py_changed:
+                print(f"   - {f}")
+        # 检查技能文件
+        skill_changed = [f for f in changed if f.startswith('skills/')]
+        if skill_changed:
+            print("📝 以下技能文件已更新:")
+            for f in skill_changed:
+                print(f"   - {f}")
+        # 检查文档
+        doc_changed = [f for f in changed if f.endswith('.md') and f not in ('skills/',)]
+        if doc_changed:
+            print("📖 以下文档已更新:")
+            for f in doc_changed:
+                print(f"   - {f}")
 
 
 if __name__ == "__main__":
