@@ -27,6 +27,8 @@ agent-edu-reviewkit/
 │   │       ├── quality-checklist.md    # 40-item quality verification checklist
 │   │       └── prediction-guide.md     # Exam prediction document template + standards
 │   └── course-notes.md                 # Chapter-by-chapter notes skill
+├── 课程资料/                             # User course materials (NOT committed — one subfolder per course)
+├── 复习文档输出/                          # Generated review docs (NOT committed — auto-created per course)
 ├── 测试课件(不提交)/                    # Test courseware (NOT committed)
 └── 测试输出(不提交)/                    # Test output (NOT committed)
 ```

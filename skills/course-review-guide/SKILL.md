@@ -64,22 +64,59 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂、推
 - **存在** → 自主模式：从配置文件读取所有参数，跳过用户询问
 - **不存在** → 交互式模式：必须逐项询问用户
 
-### 1.2 交互式模式：确认信息
+### 1.2 交互式模式：自动发现课程资料
+
+#### 1.2.1 扫描课程资料文件夹
+
+首先，使用 `Bash("ls 课程资料/")` 或 `Glob("课程资料/*/")` 扫描 `课程资料/` 目录：
+
+- **有子文件夹** → 列出所有子文件夹，请用户选择要处理的课程：
+  > "检测到以下课程资料文件夹：
+  > 1. 课程资料/数字信号处理/
+  > 2. 课程资料/线性代数/
+  > 3. 课程资料/电路分析/
+  > 
+  > 请选择要处理的课程（输入序号或课程名）"
+
+- **目录为空或不存在** → 提示用户：
+  > "未检测到课程资料。请将课程课件文件夹放入 `课程资料/` 目录中。例如：
+  > ```
+  > 课程资料/
+  > └── 你的课程名/
+  >     ├── 第1章.pdf
+  >     ├── 第2章.pptx
+  >     └── ...
+  > ```
+  > 放置完成后请告诉我，我将继续。"
+
+- **用户选定后**：
+  - 课件目录 = `课程资料/<选中的课程文件夹>`
+  - 输出根目录 = `复习文档输出/<课程文件夹名>`
+  - 提取文本目录 = `复习文档输出/<课程文件夹名>/extracted_text/`
+  - 提取图片目录 = `复习文档输出/<课程文件夹名>/extracted_images/`
+
+#### 1.2.2 确认信息
 
 逐项向用户确认（除非用户说"全部使用默认值"）：
 
-1. **课件目录路径**
+1. **课件目录路径**（已自动填充为 `课程资料/<课程名>/`）
 2. **考试范围**：哪些章节考、哪些不考
 3. **课程全称**（中/英文）和**授课教师**
 4. **参考教材**（书名、作者、版本）
 5. **考试形式**（闭卷/开卷/半开卷）
 6. **授课语言**（中文/英文/双语）
-7. **输出文件名**
+7. **输出文件名**（默认：`复习文档输出/<课程名>/<课程名>_复习指南.html`）
 8. **是否需要押题文档**：是/否，以及题型分布（选择/填空/简答/计算的比例）
 
 ### 1.3 自主模式：读取配置
 
-从 `exam-scope.json` 读取所有参数。如文件不存在，从课件文件名推断，所有推断值标注 `[自动推断]`。
+从 `exam-scope.json` 读取所有参数。如文件不存在，按以下优先级推断：
+
+1. **扫描课程资料**：扫描 `课程资料/` 目录，选择第一个包含课件文件（PDF/PPTX/DOCX）的子文件夹
+2. **从课件文件名推断**：提取章节编号和主题
+3. **所有推断值标注 `[自动推断]`**
+
+自动推断的输出路径：`复习文档输出/<课程文件夹名>/`。
 
 ### ✅ Phase 1 质量门
 
@@ -95,11 +132,13 @@ description: 将课程原始课件（PDF/PPTX/DOCX）转化为图文并茂、推
 
 ```bash
 # 推荐（多模态模型）——含整页渲染，理解版式最佳
-python extract_course_materials.py --course-dir "课件目录" --output-dir "输出目录" --render-pages
+python extract_course_materials.py --course-dir "课程资料/<课程名>" --output-dir "复习文档输出/<课程名>" --render-pages
 
 # 轻量版——仅文本+图片
-python extract_course_materials.py --course-dir "课件目录" --output-dir "输出目录"
+python extract_course_materials.py --course-dir "课程资料/<课程名>" --output-dir "复习文档输出/<课程名>"
 ```
+
+提取结果将输出到 `复习文档输出/<课程名>/extracted_text/` 和 `复习文档输出/<课程名>/extracted_images/`。
 
 ### 2.2 智能图片-章节匹配
 
@@ -107,13 +146,13 @@ python extract_course_materials.py --course-dir "课件目录" --output-dir "输
 
 ```bash
 # 基础分析：基于文本上下文自动分类图片
-python match_images.py --text-dir extracted_text --image-dir extracted_images
+python match_images.py --text-dir "复习文档输出/<课程名>/extracted_text" --image-dir "复习文档输出/<课程名>/extracted_images"
 
 # 交互式确认模式（推荐）：逐张确认图片的章节归属
-python match_images.py --text-dir extracted_text --image-dir extracted_images --interactive
+python match_images.py --text-dir "复习文档输出/<课程名>/extracted_text" --image-dir "复习文档输出/<课程名>/extracted_images" --interactive
 
 # 指定输出文件供后续HTML生成使用
-python match_images.py --text-dir extracted_text --image-dir extracted_images -o image_mapping.json
+python match_images.py --text-dir "复习文档输出/<课程名>/extracted_text" --image-dir "复习文档输出/<课程名>/extracted_images" -o image_mapping.json
 ```
 
 该脚本自动完成：
@@ -382,7 +421,7 @@ print('ChX-Y appended')
 
 **图片内嵌（必须执行）**：HTML生成完成后运行：
 ```bash
-python embed_images.py 复习文档.html --in-place
+python embed_images.py "复习文档输出/<课程名>/<课程名>_复习指南.html" --in-place
 ```
 
 ### 🔴 4.5 公式与推导规范
@@ -467,7 +506,7 @@ HTML生成完成后，按以下顺序执行后处理和质量检查：
 ### 5.1 图片内嵌
 
 ```bash
-python embed_images.py 复习文档.html --in-place -v
+python embed_images.py "复习文档输出/<课程名>/<课程名>_复习指南.html" --in-place -v
 ```
 
 ### 5.2 质量检查

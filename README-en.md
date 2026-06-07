@@ -71,7 +71,7 @@ If you're new to AI coding tools, here's what some terms mean:
 | **Python** | A programming language. You need it to run helper scripts (very simple steps, see below) |
 | **Terminal / Command Line** | A text window where you type a few commands (like `pip install`). Just copy and paste — no programming knowledge needed |
 | **pip** | Python's "app store" for installing tools |
-| **git clone** | Downloading a project from GitHub. If you don't use git, just download the ZIP from the webpage |
+| **git clone** | Downloading a project from GitHub. We recommend cloning to your home directory (where the terminal opens by default). If you don't use git, just download the ZIP from the webpage |
 | **CDN** | A public file hosting service on the internet. The generated doc loads a math rendering engine from CDN (can also work offline, see FAQ) |
 | **LaTeX** | Standard notation for math formulas. E.g., `$E = mc^2$` gets rendered as a beautifully typeset equation |
 
@@ -139,9 +139,11 @@ pip --version
 
 **Option B (If you use git):**
 ```bash
-git clone https://github.com/lijiawei255/agent-edu-reviewkit.git
-cd agent-edu-reviewkit
+git clone https://github.com/lijiawei255/agent-edu-reviewkit.git ~/agent-edu-reviewkit
+cd ~/agent-edu-reviewkit
 ```
+
+> 💡 **Clone to your home directory (`~`)** so the terminal opens right in the project folder — no extra `cd` needed. Just drop course materials into `课程资料/` and you're ready to go.
 
 **Option C (Returning users — one-click update):**
 
@@ -151,7 +153,7 @@ If you previously cloned the project with `git clone`, simply run:
 python update.py
 ```
 
-The script will check for remote updates, show new commits, and sync to the latest version. No need to re-clone.
+The script will check for remote updates, show new commits, and sync to the latest version. No need to re-clone. **The update will NOT affect** your `课程资料/` and `复习文档输出/` folders — seamless upgrade guaranteed.
 
 ### Step 2: Install Python Dependencies
 
@@ -165,15 +167,21 @@ This installs all required Python packages (`pypdf`, `python-pptx`, `python-docx
 
 ### Step 3: Prepare Your Course Materials
 
-Place your courseware files in a folder:
+Place your courseware in the `课程资料/` folder inside the project. One subfolder per course:
 
 ```
-./my-courseware/
-    ├── chapter1_intro.pdf
-    ├── chapter2_fundamentals.pptx
-    ├── chapter3_applications.docx
-    └── ...
+课程资料/
+├── digital-signal-processing/
+│   ├── chapter1_intro.pdf
+│   ├── chapter2_discrete_time_signals.pptx
+│   ├── chapter3_dft.pdf
+│   └── exam-scope.json（optional — pre-set exam scope）
+├── linear-algebra/
+│   ├── chapter1_matrices.pdf
+│   └── ...
 ```
+
+> 💡 **Why this way**: Just drop courseware into `课程资料/` — the skill auto-discovers available courses and lists them for you. All output automatically goes to `复习文档输出/<course-name>/`, keeping your project clean and organized.
 
 ### Step 4: Tell Your AI Assistant What to Do
 
@@ -284,13 +292,15 @@ Course files ──→ Phase 1: Scope ──→ Phase 2: Extraction ──→ Ph
 
 ### Phase 1: Scope Confirmation
 
-The AI scans your courseware directory, lists all files, and confirms:
+The AI **auto-scans the `课程资料/` directory**, lists detected course folders, and lets you pick one. Once selected, it automatically sets the courseware path and output path.
+
+Confirmation items include:
 - Exam scope (which chapters are in/out)
 - Course name, instructor, textbook
 - Exam format (closed-book / open-book)
-- Output filename
+- Output filename (defaults to `复习文档输出/<course-name>/`)
 
-**Tip**: Prepare an exam scope list or syllabus in advance for better accuracy.
+**Tip**: Place an `exam-scope.json` in your course folder to pre-set the exam scope and skip manual confirmation.
 
 ### Phase 2: Content Extraction
 
@@ -298,20 +308,21 @@ The AI guides you to run `extract_course_materials.py`. **Use command-line argum
 
 ```bash
 # Basic usage: specify courseware and output directories
-python extract_course_materials.py --course-dir "path/to/courseware" --output-dir "output_dir"
+python extract_course_materials.py --course-dir "课程资料/your-course" --output-dir "复习文档输出/your-course"
 
 # Common full command:
 python extract_course_materials.py \
-    --course-dir "./my-courseware" \
-    --text-output-dir "extracted_text" \
-    --image-output-dir "extracted_images"
+    --course-dir "课程资料/digital-signal-processing" \
+    --output-dir "复习文档输出/digital-signal-processing"
 ```
+
+Extracted results are saved to `复习文档输出/<course-name>/extracted_text/` and `复习文档输出/<course-name>/extracted_images/`.
 
 **Optional --render-pages flag**: If your AI model supports vision (multimodal models like Claude Opus 4, GPT-4V), **highly recommended**:
 
 ```bash
 # Install pymupdf first: pip install pymupdf
-python extract_course_materials.py --course-dir "./my-courseware" --render-pages
+python extract_course_materials.py --course-dir "课程资料/your-course" --render-pages
 ```
 
 This renders PDF pages as full-page screenshots, allowing the AI to see the complete layout (formulas, charts, diagrams in context) — **significantly improves output quality**. Essential for scan-based PDFs (pure-image courseware).
@@ -328,13 +339,13 @@ After extraction, run `match_images.py` for intelligent image-to-chapter matchin
 
 ```bash
 # Basic usage
-python match_images.py --text-dir extracted_text --image-dir extracted_images
+python match_images.py --text-dir "复习文档输出/<course-name>/extracted_text" --image-dir "复习文档输出/<course-name>/extracted_images"
 
 # Interactive confirmation mode (recommended, allows manual correction)
-python match_images.py --text-dir extracted_text --image-dir extracted_images --interactive
+python match_images.py --text-dir "复习文档输出/<course-name>/extracted_text" --image-dir "复习文档输出/<course-name>/extracted_images" --interactive
 
 # Specify output mapping file
-python match_images.py --text-dir extracted_text -o image_mapping.json
+python match_images.py --text-dir "复习文档输出/<course-name>/extracted_text" -o image_mapping.json
 ```
 
 Features:
@@ -367,7 +378,7 @@ The output includes:
 After generation, make the HTML fully self-contained:
 
 ```bash
-python embed_images.py <filename>.html   # Inline all images as base64
+python embed_images.py "复习文档输出/<course-name>/<course-name>_review.html" --in-place -v
 python setup_mathjax.py                  # (One-time) Download MathJax locally for offline formulas
 ```
 
@@ -618,8 +629,10 @@ cd agent-edu-reviewkit
 # Install dependencies
 pip install -r requirements.txt
 
-# Test courseware and output directories are auto-excluded by .gitignore
-# Place test materials in 测试课件(不提交)/ directory
+# Project structure
+# 课程资料/      — User course materials (not committed, one subfolder per course)
+# 复习文档输出/   — Generated review docs (not committed, auto-created per course)
+# 测试课件(不提交)/ — Dev test courseware
 ```
 
 ---
