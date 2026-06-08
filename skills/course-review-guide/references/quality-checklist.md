@@ -45,29 +45,45 @@
 - [ ] 🔴 27. 不引用的图片已过滤：装饰渐变条(尺寸筛查标记)、Logo、公式截图、<200×200px、页眉页脚、视觉识别与文字不匹配的图片
 - [ ] 🔴 28. 确认HTML中无装饰性图片残留：运行 `grep -c "data:image" 文档.html` 得到的数字应 ≤ 视觉验证中标记为"✅匹配"的图片总数
 
+## Mermaid 与图表
+
+- [ ] 🔴 29. 所有 Mermaid 代码块闭合完整（` ```mermaid ` 与 ` ``` ` 成对出现，数量一致）
+- [ ] 🔴 30. Mermaid 节点标签中特殊字符（`|` `_` `=` `{` `}` `(` `)` `<` `>` `#` `^` `:` `,` `*`）已用双引号包裹——无裸露的特殊字符在标签中
+- [ ] 31. 每个 Mermaid 块使用 `<div class="mermaid-container">` 包裹
+- [ ] 32. Mermaid 图表配色通过 `%%{init}%%` 配置，与文档蓝色主题一致
+- [ ] 33. 每个 Mermaid 图表下方有一句解释文字（图说）
+
 ## 交互组件
 
-- [ ] 🔴 29. 每章有选项卡布局（⚡快速复习 + 📖详细讲解），默认显示快速复习
-- [ ] 🔴 30. 每章快速复习面板有3-5张术语闪卡（`.flashcard-grid`）
-- [ ] 🔴 31. 搜索HTML确认：所有闪卡DIV中**无内联onclick属性**
-- [ ] 🔴 32. 搜索HTML确认：无 `onclick="...toggle('flipped')..."` 代码
-- [ ] 33. 每章有2-4道练习题的 `.quiz-section`，答案默认折叠
-- [ ] 34. 每章推导步骤使用 `<details class="derive-steps">` 可折叠
+- [ ] 🔴 34. 每章有选项卡布局（⚡快速复习 + 📖详细讲解），默认显示快速复习
+- [ ] 🔴 35. 每章快速复习面板有3-5张术语闪卡（`.flashcard-grid`）
+- [ ] 🔴 36. 搜索HTML确认：所有闪卡DIV中**无内联onclick属性**
+- [ ] 🔴 37. 搜索HTML确认：无 `onclick="...toggle('flipped')..."` 代码
+- [ ] 38. 每章有2-4道练习题的 `.quiz-section`，答案默认折叠
+- [ ] 39. 每章推导步骤使用 `<details class="derive-steps">` 可折叠
 
 ## 交互功能
 
-- [ ] 35. 进度checkbox在localStorage中持久化，刷新后恢复
-- [ ] 36. 搜索栏可实时过滤所有内容块（章节卡片、阅读指南、目录）
-- [ ] 37. 闪卡点击可正常翻转（事件委托，无双重翻转bug）
-- [ ] 38. 选项卡切换正常
+- [ ] 40. 进度checkbox在localStorage中持久化，刷新后恢复
+- [ ] 41. 搜索栏可实时过滤所有内容块（章节卡片、阅读指南、目录）
+- [ ] 42. 闪卡点击可正常翻转（事件委托，无双重翻转bug）
+- [ ] 43. 选项卡切换正常
 
 ## 最终检查
 
-- [ ] 🔴 39. 搜索全文档确认无作者姓名（Li Jiawei, Peng Chen, Cai Haoxuan）
-- [ ] 🔴 40. MathJax使用CDN在线渲染（`https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js`），HTML中无任何本地 `./mathjax/` 或 `../mathjax/` 路径引用
-- [ ] 41. 移动端（≤768px）和打印样式均可用
-- [ ] 42. 打印时交互元素正确降级（所有内容可见，无控件干扰）
-- [ ] 43. JavaScript为单内联 `<script>` 块，无外部依赖
+- [ ] 🔴 44. 搜索全文档确认无作者姓名（Li Jiawei, Peng Chen, Cai Haoxuan）
+- [ ] 🔴 45. MathJax使用CDN在线渲染（`https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js`），HTML中无任何本地 `./mathjax/` 或 `../mathjax/` 路径引用
+- [ ] 46. 移动端（≤768px）和打印样式均可用
+- [ ] 47. 打印时交互元素正确降级（所有内容可见，无控件干扰）
+- [ ] 48. JavaScript为单内联 `<script>` 块，无外部依赖
+
+## 考点汇总与跨章引用
+
+- [ ] 🔴 49. 每章末尾有「高频考点汇总」表（`.exam-points-summary`，位于 `.chapter-card` 内部、`.tab-container` 之后）
+- [ ] 50. 汇总表包含三列：考点 | 重要度 | 考查形式
+- [ ] 51. 重要度使用 ★★★ / ★★ / ★ 三级标注，星级有明确区分依据
+- [ ] 🔴 52. 重要度为 ★★★ 的考点在正文中有对应的 `callout-key` 或强调标记
+- [ ] 🔴 53. 跨章节依赖概念使用标准引用格式（📖前置 / 🔗延伸 / ⚠️区分）
 
 ## 快速诊断命令
 
@@ -102,6 +118,17 @@ grep -o '$$' 文档.html | wc -l
 
 # 检查MathJax是否纯CDN（应无本地mathjax引用）
 grep -c "\./mathjax\|\.\./mathjax" 文档.html
+
+# === Mermaid 图表检查 ===
+# 检查 Mermaid 块数量（应为偶数——开口和闭合成对）
+grep -c '```mermaid' 文档.html
+# 注意：还需手动确认每个 ```mermaid 块后面有对应的闭合 ```
+
+# 检查 Mermaid 节点标签中裸露的特殊字符（应无输出——所有特殊字符应在引号内）
+grep -P '\[[^"]*[|_={}()<>#^:,*][^"]*\]' 文档.html
+
+# 检查 exam-points-summary 区块数（应等于考试章节数）
+grep -c 'exam-points-summary' 文档.html
 
 # === 内容合规检查 ===
 # 检查作者名泄露（应无输出）

@@ -39,6 +39,27 @@ document.getElementById('MathJax-script').addEventListener('error', function() {
     ⚠ 此文档需要 JavaScript 才能正确渲染数学公式。请启用 JavaScript 或使用现代浏览器打开。
   </p>
 </noscript>
+<!-- Mermaid Diagram Rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    securityLevel: 'sandbox',
+    themeVariables: {
+      primaryColor: '#eff6ff',
+      primaryBorderColor: '#2563eb',
+      primaryTextColor: '#1e293b',
+      secondaryColor: '#f8fafc',
+      secondaryBorderColor: '#64748b',
+      lineColor: '#3b82f6',
+      fontFamily: 'system-ui, -apple-system, "Segoe UI", "Noto Sans SC", sans-serif',
+      fontSize: '15px'
+    }
+  });
+});
+</script>
 <style>
   /* ===== CSS Variables ===== */
   :root {
@@ -283,6 +304,30 @@ document.getElementById('MathJax-script').addEventListener('error', function() {
     border-radius: var(--radius-lg);
   }
   .diagram-container svg { max-width: 100%; height: auto; }
+
+  /* ===== Mermaid Diagrams ===== */
+  .mermaid-container {
+    text-align: center;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--bg-soft);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+  }
+  .mermaid-container svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ===== Exam Points Summary Table ===== */
+  .exam-points-summary {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px dashed var(--border);
+  }
+  .exam-points-summary h3 {
+    color: var(--primary);
+  }
 
   /* ===== Callout Boxes ===== */
   .callout {
@@ -717,6 +762,17 @@ document.getElementById('MathJax-script').addEventListener('error', function() {
 </figure>
 <p>如上图所示，[对图片内容的具体解释，与当前讲解的概念建立关联]。</p>
 
+<!-- 当概念涉及流程/层级/架构关系时，使用 Mermaid 替代或补充静态截图 -->
+<div class="mermaid-container">
+<pre><code class="language-mermaid">
+graph TD
+    A["[根概念/起点]"] --> B["[分支/步骤1]"]
+    A --> C["[分支/步骤2]"]
+    B --> D["[子节点/下一步]"]
+</code></pre>
+</div>
+<p>如上图所示，[对Mermaid图内容的解释，说明各节点之间的关系]。</p>
+
 <p><strong>2. 物理意义</strong>：[这个概念到底描述了什么物理现象？用生活中的类比解释]</p>
 
 <p><strong>3. 数学表达拆解</strong>：
@@ -783,6 +839,17 @@ document.getElementById('MathJax-script').addEventListener('error', function() {
     </details>
   </div>
   <!-- 每章2-4道练习题 -->
+</div>
+
+<!-- 高频考点汇总 -->
+<div class="exam-points-summary">
+  <h3>🎯 高频考点汇总（第N章）</h3>
+  <table>
+    <tr><th>考点</th><th>重要度</th><th>考查形式</th></tr>
+    <tr><td>[考点名称]</td><td>★★★</td><td>[考查形式]</td></tr>
+    <tr><td>[考点名称]</td><td>★★</td><td>[考查形式]</td></tr>
+    <tr><td>[考点名称]</td><td>★</td><td>[考查形式]</td></tr>
+  </table>
 </div>
 
 </div><!-- .chapter-card -->
@@ -918,6 +985,24 @@ document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(f
     }
   });
 });
+
+// === Mermaid Re-render on Details Toggle ===
+// When a collapsed section containing a Mermaid diagram is expanded,
+// the diagram may need re-rendering since it was hidden during page load.
+document.querySelectorAll('details.derive-steps, details.quiz-answer').forEach(function(det) {
+  det.addEventListener('toggle', function() {
+    if (det.open) {
+      try {
+        // Find any Mermaid elements inside the just-opened details
+        var mermaidEls = det.querySelectorAll('.mermaid-container pre code.language-mermaid');
+        if (mermaidEls.length > 0 && window.mermaid) {
+          // Re-initialize Mermaid to render newly visible diagrams
+          window.mermaid.run({ nodes: Array.from(mermaidEls).map(function(el) { return el.parentElement; }) });
+        }
+      } catch(e) {}
+    }
+  });
+});
 </script>
 
 </body>
@@ -941,3 +1026,77 @@ print('ChX-Y appended')
 **为什么禁止 `r'''...'''`**：JavaScript 大量使用单引号 `'` 作为字符串分隔符（如 `addEventListener('click', ...)`, `getElementById('search')`, `classList.toggle('active')` 等）。在 Python `r'''...'''` raw string 中，连续单引号 `''` 会被原样写入文件，导致浏览器中的 JS 代码变成 `addEventListener(''click'', ...)` 而非 `addEventListener('click', ...)`——这是一个**静默的JS语法错误**，页面不会报错但所有交互功能失效。
 
 使用 `"""..."""` 三双引号后，JS 中的 `'` 在 Python 字符串中无需任何转义，直接写即可，从根本上避免此问题。
+
+---
+
+## Mermaid 安全语法规则
+
+> **重要性**：Mermaid 解析器对未引号包裹的特殊字符极其敏感。一个裸露的 `|` `_` `()` `{}` 就能导致整个图表渲染失败。生成每个 Mermaid 代码块时必须逐节点检查。
+
+### 必须用双引号包裹的字符
+
+以下字符出现在节点标签文本中时，**整个标签必须用双引号 `"..."` 包裹**：
+
+```
+|  _  =  {  }  (  )  <  >  #  ^  :  ,  *
+```
+
+### 安全字符（无需引号）
+
+- 纯中文文本（不含上述特殊符号）
+- 纯英文单词
+- 纯数字
+
+### 正确示例
+
+```mermaid
+graph TD
+    A["包含特殊|符号的标签"] --> B["参数满足条件 (x>0)"]
+    C{"判断条件?"} -->|"是"| D["结果A"]
+    C -->|"否"| E["结果B"]
+    F["步骤1: 初始化"] --> G["步骤2: 计算"]
+```
+
+### 错误示例（会导致渲染失败）
+
+```mermaid
+graph TD
+    A[包含特殊|符号的标签] --> B[参数满足条件 (x>0)]
+    C{判断条件?} -->|是| D[结果A]
+```
+
+以上错误示例中：节点 A 的 `|`、节点 B 的 `(` `)`、边标签 `是` 虽然没有特殊字符，但边标签最好也养成引号习惯以防万一。
+
+### 决策节点语法
+
+菱形决策节点使用 `{}` 包裹，标签同样遵循引号规则：
+
+```
+C{"描述文本"}
+```
+
+### 边标签语法
+
+```
+A -->|"标签文本"| B
+```
+
+边标签含特殊字符时必须用引号包裹。建议始终给边标签加引号，养成安全习惯。
+
+### HTML 嵌入格式
+
+在 HTML 文档中，Mermaid 图表使用以下格式：
+
+```html
+<div class="mermaid-container">
+<pre><code class="language-mermaid">
+graph TD
+    A["起点"] --> B["终点"]
+</code></pre>
+</div>
+```
+
+关键点：
+- 外层使用 `<div class="mermaid-container">` 包裹
+- 内层使用 `<pre><code class="language-mermaid">` 标记
+- Mermaid 代码不要缩进过多（会影响解析）
